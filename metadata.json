@@ -1,0 +1,5 @@
+{
+  "name": "SandLogix - Gestion de Livraison de Sable",
+  "description": "Une application professionnelle de gestion des livraisons de sable avec suivi des paiements, calcul automatique des commissions, gestion des soldes clients et tableaux de bord analytiques.",
+  "requestFramePermissions": []
+}
