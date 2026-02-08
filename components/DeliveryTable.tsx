@@ -52,7 +52,7 @@ const DeliveryTable: React.FC<DeliveryTableProps> = ({ deliveries, settings, onD
     const doc = new jsPDF() as any;
 
     doc.setFontSize(20);
-    doc.text('SandLogix - Historique de Livraisons', 14, 22);
+    doc.text('SandLogix - Rapport de Livraisons', 14, 22);
     doc.setFontSize(10);
     doc.text(`Généré le: ${new Date().toLocaleString()}`, 14, 30);
 

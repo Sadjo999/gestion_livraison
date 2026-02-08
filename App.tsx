@@ -251,9 +251,14 @@ const App: React.FC = () => {
         ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
         fixed md:sticky top-0 left-0 z-40 w-64 h-full md:h-screen bg-slate-900 text-white p-6 flex flex-col gap-8 transition-transform duration-300 ease-in-out
       `}>
-        <div className="hidden md:flex items-center gap-3">
-          <Truck className="w-8 h-8 text-amber-500" />
-          <h1 className="text-xl font-bold tracking-tight">SandLogix</h1>
+        <div className="flex items-center gap-2">
+          <div className="w-10 h-10 bg-amber-500 rounded-xl flex items-center justify-center shadow-lg shadow-amber-200">
+            <Truck className="text-white w-6 h-6" />
+          </div>
+          <div>
+            <h1 className="text-xl font-black text-slate-800 tracking-tighter leading-none">SandLogix</h1>
+            <p className="text-[10px] font-bold text-amber-600 uppercase tracking-widest mt-0.5">Gestion Pro de Livraison</p>
+          </div>
         </div>
 
         <div className="flex flex-col gap-2">
