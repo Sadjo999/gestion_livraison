@@ -5,6 +5,30 @@ export const calculateCommission = (gross: number, rate: number): number => {
   return (gross * rate) / 100;
 };
 
+/**
+ * New calculation logic for granite deliveries:
+ * 1. Management Share = 3m³ * unitPrice
+ * 2. Partner Share = (Volume - 3) * unitPrice
+ * 3. Agent Commission = 35% of Management Share
+ * 4. Management Net = 65% of Management Share
+ */
+export const calculateGraniteFinances = (volume: number, unitPrice: number, agentRate: number = 35) => {
+  const grossAmount = volume * unitPrice;
+  const managementShare = Math.min(3, volume) * unitPrice; // If volume < 3, management takes all
+  const partnerShare = Math.max(0, volume - 3) * unitPrice;
+
+  const agentCommission = (managementShare * agentRate) / 100;
+  const managementNet = managementShare - agentCommission;
+
+  return {
+    grossAmount,
+    managementShare,
+    partnerShare,
+    agentCommission,
+    managementNet
+  };
+};
+
 export const calculateNet = (gross: number, commission: number): number => {
   return gross - commission;
 };

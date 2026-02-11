@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Delivery, AppSettings } from '../types';
-import { calculateCommission, calculateNet, formatCurrency } from '../utils/finance';
+import { calculateCommission, calculateNet, formatCurrency, calculateGraniteFinances } from '../utils/finance';
 import { Save, X } from 'lucide-react';
 
 interface Props {
@@ -31,15 +31,22 @@ const DeliveryForm: React.FC<Props> = ({ onSubmit, initialData, onCancel, settin
   });
 
   const [showConfirm, setShowConfirm] = useState(false);
-  const [commissionAmount, setCommissionAmount] = useState(0);
+  const [finances, setFinances] = useState({
+    grossAmount: 0,
+    managementShare: 0,
+    partnerShare: 0,
+    agentCommission: 0,
+    managementNet: 0
+  });
+
   const [netAmount, setNetAmount] = useState(0);
 
   useEffect(() => {
-    const comm = calculateCommission(formData.gross_amount || 0, formData.commission_rate || 0);
-    const net = calculateNet(formData.gross_amount || 0, comm);
-    setCommissionAmount(comm);
-    setNetAmount(net);
-  }, [formData.gross_amount, formData.commission_rate]);
+    const unitPrice = settings.granitePrices?.[formData.sand_type || ''] || 0;
+    const results = calculateGraniteFinances(formData.volume || 0, unitPrice, formData.commission_rate || 35);
+    setFinances(results);
+    setNetAmount(results.managementNet);
+  }, [formData.volume, formData.sand_type, formData.commission_rate, settings.granitePrices]);
 
   const handlePreliminarySubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -51,16 +58,23 @@ const DeliveryForm: React.FC<Props> = ({ onSubmit, initialData, onCancel, settin
   };
 
   const handleFinalSubmit = () => {
+    const unitPrice = settings.granitePrices?.[formData.sand_type || ''] || 0;
     const newDelivery: Delivery = {
       id: initialData?.id || '',
       delivery_date: formData.delivery_date!,
       sand_type: formData.sand_type!,
+      volume: Number(formData.volume),
+      unit_price: unitPrice,
+      gross_amount: finances.grossAmount,
+      management_share: finances.managementShare,
+      partner_share: finances.partnerShare,
+      agent_commission: finances.agentCommission,
+      management_net: finances.managementNet,
       client: formData.client!,
       payment_date: formData.payment_date || null,
-      gross_amount: Number(formData.gross_amount),
       commission_rate: Number(formData.commission_rate),
-      commission_amount: commissionAmount,
-      net_amount: netAmount,
+      commission_amount: finances.agentCommission,
+      net_amount: finances.managementNet,
       truck_number: formData.truck_number!,
       notes: formData.notes
     };
@@ -125,17 +139,21 @@ const DeliveryForm: React.FC<Props> = ({ onSubmit, initialData, onCancel, settin
 
         {/* Financials */}
         <div className="space-y-1">
-          <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">💰 Montant Brut</label>
-          <div className="relative">
-            <input
-              type="number"
-              step="0.01"
-              required
-              placeholder="0.00"
-              className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-amber-500 focus:bg-white transition-all outline-none font-mono"
-              value={formData.gross_amount || ''}
-              onChange={e => setFormData(prev => ({ ...prev, gross_amount: Number(e.target.value) }))}
-            />
+          <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">📦 Volume (m³)</label>
+          <input
+            type="number"
+            step="0.01"
+            required
+            placeholder="Ex: 30"
+            className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-amber-500 focus:bg-white transition-all outline-none font-mono"
+            value={formData.volume || ''}
+            onChange={e => setFormData(prev => ({ ...prev, volume: Number(e.target.value) }))}
+          />
+        </div>
+        <div className="space-y-1">
+          <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">🏷️ Prix Unitaire (/m³)</label>
+          <div className="p-3 bg-slate-100 border border-slate-200 rounded-xl text-slate-600 font-mono">
+            {formatCurrency(settings.granitePrices?.[formData.sand_type || ''] || 0)}
           </div>
         </div>
         <div className="space-y-1">
@@ -150,33 +168,37 @@ const DeliveryForm: React.FC<Props> = ({ onSubmit, initialData, onCancel, settin
           />
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-slate-900 rounded-2xl md:col-span-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4 p-4 bg-slate-900 rounded-2xl md:col-span-2">
           <div className="space-y-1">
             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Montant Brut</span>
             <div className="text-white font-mono font-bold text-lg leading-none">
-              {formatCurrency(formData.gross_amount || 0)}
+              {formatCurrency(finances.grossAmount)}
             </div>
           </div>
           <div className="space-y-1 border-l border-slate-800 pl-4">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Commission ({formData.commission_rate}%)</span>
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Part Partenaire</span>
+            <div className="text-slate-300 font-mono font-bold text-lg leading-none">
+              {formatCurrency(finances.partnerShare)}
+            </div>
+          </div>
+          <div className="space-y-1 border-l border-slate-800 pl-4">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Part Direction (3m³)</span>
+            <div className="text-blue-400 font-mono font-bold text-lg leading-none">
+              {formatCurrency(finances.managementShare)}
+            </div>
+          </div>
+          <div className="space-y-1 border-l border-slate-800 pl-4">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Comm Agent ({formData.commission_rate}%)</span>
             <div className="text-amber-400 font-mono font-bold text-lg leading-none">
-              {formatCurrency(commissionAmount)}
+              {formatCurrency(finances.agentCommission)}
             </div>
           </div>
           <div className="space-y-1 border-l border-slate-800 pl-4">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Total Net</span>
-            <div className={`font-mono font-bold text-lg leading-none ${netAmount < 0 ? 'text-rose-400' : 'text-emerald-400'}`}>
-              {formatCurrency(netAmount)}
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Net Direction (65%)</span>
+            <div className={`font-mono font-bold text-lg leading-none ${finances.managementNet < 0 ? 'text-rose-400' : 'text-emerald-400'}`}>
+              {formatCurrency(finances.managementNet)}
             </div>
           </div>
-          {!initialData && (
-            <div className="space-y-1 border-l border-slate-800 pl-4">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Avance</span>
-              <div className="text-emerald-400 font-mono font-bold text-lg leading-none">
-                {formatCurrency(formData.initial_payment || 0)}
-              </div>
-            </div>
-          )}
         </div>
 
         {!initialData && (
@@ -207,11 +229,11 @@ const DeliveryForm: React.FC<Props> = ({ onSubmit, initialData, onCancel, settin
 
             <div className="md:col-span-2 p-4 bg-emerald-950 border border-emerald-900 rounded-2xl flex justify-between items-center">
               <div className="space-y-0.5">
-                <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">Reste à Payer</span>
-                <p className="text-xs text-emerald-400/60 leading-tight">Basé sur le montant brut</p>
+                <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">Reste à Payer (Client)</span>
+                <p className="text-xs text-emerald-400/60 leading-tight">Basé sur le montant brut total</p>
               </div>
               <div className="text-emerald-400 font-black text-2xl tracking-tight font-mono">
-                {formatCurrency((formData.gross_amount || 0) - (formData.initial_payment || 0))}
+                {formatCurrency((finances.grossAmount || 0) - (formData.initial_payment || 0))}
               </div>
             </div>
           </>
@@ -280,25 +302,36 @@ const DeliveryForm: React.FC<Props> = ({ onSubmit, initialData, onCancel, settin
 
                 <div className="col-span-2 border-t border-slate-100 pt-4"></div>
 
-                <div className="text-slate-500">Montant Brut:</div>
-                <div className="font-mono font-bold text-right text-lg">{formatCurrency(formData.gross_amount || 0)}</div>
+                <div className="text-slate-500">Volume:</div>
+                <div className="font-bold text-right">{formData.volume} m³</div>
 
-                <div className="text-slate-500">Commission ({formData.commission_rate}%):</div>
-                <div className="font-mono text-right text-amber-600">-{formatCurrency(commissionAmount)}</div>
+                <div className="text-slate-500">Montant Brut Total:</div>
+                <div className="font-mono font-bold text-right text-lg">{formatCurrency(finances.grossAmount)}</div>
 
-                <div className="text-slate-500 pt-1 font-bold">Total Net (Gain):</div>
-                <div className="font-mono font-bold text-right text-emerald-600 text-lg">{formatCurrency(netAmount)}</div>
+                <div className="col-span-2 border-t border-slate-100 pt-2"></div>
+
+                <div className="text-slate-500">Part Partenaire (Reste):</div>
+                <div className="font-mono text-right text-slate-600">{formatCurrency(finances.partnerShare)}</div>
+
+                <div className="text-slate-500">Part Direction (Val. 3m³):</div>
+                <div className="font-mono text-right text-blue-600 font-bold">{formatCurrency(finances.managementShare)}</div>
+
+                <div className="text-slate-500 pl-4">- Comm Agent ({formData.commission_rate}%):</div>
+                <div className="font-mono text-right text-amber-600">-{formatCurrency(finances.agentCommission)}</div>
+
+                <div className="text-slate-500 pl-4 font-bold">- Net Direction (65%):</div>
+                <div className="font-mono font-bold text-right text-emerald-600">{formatCurrency(finances.managementNet)}</div>
 
                 {!initialData && (
                   <>
                     <div className="col-span-2 border-t border-slate-100 pt-4"></div>
-                    <div className="text-slate-500">Avance (Acompte):</div>
+                    <div className="text-slate-500">Avance client:</div>
                     <div className="font-mono font-bold text-right text-blue-600">{formatCurrency(formData.initial_payment || 0)}</div>
 
                     <div className="col-span-2 bg-emerald-50 p-4 rounded-2xl mt-2 flex justify-between items-center">
-                      <span className="font-black text-emerald-800 uppercase text-xs">Reste à Payer</span>
+                      <span className="font-black text-emerald-800 uppercase text-xs">Reste à Payer Client</span>
                       <span className="font-mono font-black text-emerald-700 text-xl">
-                        {formatCurrency((formData.gross_amount || 0) - (formData.initial_payment || 0))}
+                        {formatCurrency(finances.grossAmount - (formData.initial_payment || 0))}
                       </span>
                     </div>
                   </>

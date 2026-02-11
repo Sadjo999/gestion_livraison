@@ -56,18 +56,21 @@ const DeliveryTable: React.FC<DeliveryTableProps> = ({ deliveries, settings, onD
     doc.setFontSize(10);
     doc.text(`Généré le: ${new Date().toLocaleString()}`, 14, 30);
 
-    const tableColumn = ["Date", "Camion", "Client", "Sable", "Brut", "Comm %", "Net", "Payé", "Reste"];
+    const tableColumn = ["Date", "Camion", "Client", "Type", "Vol(m³)", "Prix/m³", "Brut", "Part Part.", "Comm Agent", "Net Dir.", "Payé", "Reste"];
     const tableRows = filteredData.map(d => {
       const paid = d.payments?.reduce((sum, p) => sum + p.amount, 0) || 0;
-      const remaining = d.net_amount - paid;
+      const remaining = d.management_net - paid;
       return [
         d.delivery_date,
         d.truck_number,
         d.client,
         d.sand_type,
+        d.volume,
+        formatCurrency(d.unit_price),
         formatCurrency(d.gross_amount),
-        `${d.commission_rate}%`,
-        formatCurrency(d.net_amount),
+        formatCurrency(d.partner_share),
+        formatCurrency(d.agent_commission),
+        formatCurrency(d.management_net),
         formatCurrency(paid),
         formatCurrency(remaining)
       ];
@@ -95,13 +98,15 @@ const DeliveryTable: React.FC<DeliveryTableProps> = ({ deliveries, settings, onD
 
     const finalY = (doc as any).lastAutoTable.finalY || 150;
     const totalBrut = filteredData.reduce((s, c) => s + c.gross_amount, 0);
-    const totalNet = filteredData.reduce((s, c) => s + c.net_amount, 0);
+    const totalPartner = filteredData.reduce((s, c) => s + c.partner_share, 0);
+    const totalManagementNet = filteredData.reduce((s, c) => s + c.management_net, 0);
+    const totalAgentComm = filteredData.reduce((s, c) => s + c.agent_commission, 0);
     const totalPaid = filteredData.reduce((s, c) => s + (c.payments?.reduce((pSum, p) => pSum + p.amount, 0) || 0), 0);
-    const totalRemaining = totalBrut - totalPaid;
+    const totalRemaining = totalManagementNet - totalPaid;
 
     doc.setFontSize(10);
     doc.text(`TOTAL BRUT: ${formatCurrency(totalBrut)}`, 14, finalY + 10);
-    doc.text(`TOTAL NET (Gain): ${formatCurrency(totalNet)}`, 14, finalY + 17);
+    doc.text(`TOTAL NET (Gain): ${formatCurrency(totalManagementNet)}`, 14, finalY + 17);
     doc.text(`TOTAL ENCAISSÉ: ${formatCurrency(totalPaid)}`, 140, finalY + 10);
     doc.text(`RESTE À RECOUVRER: ${formatCurrency(totalRemaining)}`, 140, finalY + 17);
 
@@ -177,10 +182,13 @@ const DeliveryTable: React.FC<DeliveryTableProps> = ({ deliveries, settings, onD
                 <th className="px-4 py-4">Date</th>
                 <th className="px-4 py-4">Camion</th>
                 <th className="px-4 py-4">Client</th>
-                <th className="px-4 py-4">Type Sable</th>
+                <th className="px-4 py-4">Type</th>
+                <th className="px-4 py-4 text-right">Vol (m³)</th>
+                <th className="px-4 py-4 text-right">Prix/m³</th>
                 <th className="px-4 py-4 text-right">Brut</th>
-                <th className="px-4 py-4 text-right">Comm</th>
-                <th className="px-4 py-4 text-right">Net</th>
+                <th className="px-4 py-4 text-right text-slate-400">Part Part.</th>
+                <th className="px-4 py-4 text-right text-amber-600">Comm Agent</th>
+                <th className="px-4 py-4 text-right text-emerald-600">Net Dir.</th>
                 <th className="px-4 py-4 text-right">Payé</th>
                 <th className="px-4 py-4 text-right">Reste</th>
                 <th className="px-4 py-4 text-center">Actions</th>
@@ -196,14 +204,15 @@ const DeliveryTable: React.FC<DeliveryTableProps> = ({ deliveries, settings, onD
                     <td className="px-4 py-4 font-bold text-amber-600">{d.truck_number}</td>
                     <td className="px-4 py-4 font-semibold text-slate-800">{d.client}</td>
                     <td className="px-4 py-4 text-slate-500 text-xs">{d.sand_type}</td>
-                    <td className="px-4 py-4 text-right font-medium">{formatCurrency(d.gross_amount)}</td>
-                    <td className="px-4 py-4 text-right text-[11px] text-slate-400 italic">
-                      {d.commission_rate}% ({formatCurrency(d.commission_amount)})
+                    <td className="px-4 py-4 text-right font-mono text-xs">{d.volume}</td>
+                    <td className="px-4 py-4 text-right font-mono text-xs italic text-slate-400">{formatCurrency(d.unit_price)}</td>
+                    <td className="px-4 py-4 text-right text-xs">{formatCurrency(d.gross_amount)}</td>
+                    <td className="px-4 py-4 text-right text-slate-400 text-xs">{formatCurrency(d.partner_share)}</td>
+                    <td className="px-4 py-4 text-right text-amber-600 text-xs font-bold">{formatCurrency(d.agent_commission)}</td>
+                    <td className="px-4 py-4 text-right font-bold text-emerald-600 border-l border-slate-50">
+                      {formatCurrency(d.management_net)}
                     </td>
-                    <td className="px-4 py-4 text-right font-bold text-slate-900 border-l border-slate-50">
-                      {formatCurrency(d.net_amount)}
-                    </td>
-                    <td className="px-4 py-4 text-right font-bold text-emerald-600">
+                    <td className="px-4 py-4 text-right font-bold text-blue-600">
                       {formatCurrency(paid)}
                     </td>
                     <td className={`px-4 py-4 text-right font-black ${remaining > 0 ? 'text-rose-600' : 'text-emerald-600 bg-emerald-50/30'}`}>
@@ -240,16 +249,17 @@ const DeliveryTable: React.FC<DeliveryTableProps> = ({ deliveries, settings, onD
             </tbody>
             <tfoot className="bg-slate-900 text-white font-bold">
               <tr>
-                <td colSpan={4} className="px-4 py-4 text-right text-[10px] uppercase tracking-widest text-slate-400">Totaux Réalisés</td>
+                <td colSpan={6} className="px-4 py-4 text-right text-[10px] uppercase tracking-widest text-slate-400">Totaux Réalisés</td>
                 <td className="px-4 py-4 text-right border-l border-slate-800">{formatCurrency(filteredData.reduce((s, c) => s + c.gross_amount, 0))}</td>
-                <td className="px-4 py-4 text-right border-l border-slate-800 text-amber-400 text-xs">{formatCurrency(filteredData.reduce((s, c) => s + c.commission_amount, 0))}</td>
-                <td className="px-4 py-4 text-right border-l border-slate-800 text-emerald-400">{formatCurrency(filteredData.reduce((s, c) => s + c.net_amount, 0))}</td>
+                <td className="px-4 py-4 text-right border-l border-slate-800 text-slate-400 text-xs">{formatCurrency(filteredData.reduce((s, c) => s + (c.partner_share || 0), 0))}</td>
+                <td className="px-4 py-4 text-right border-l border-slate-800 text-amber-400 text-xs">{formatCurrency(filteredData.reduce((s, c) => s + (c.agent_commission || 0), 0))}</td>
+                <td className="px-4 py-4 text-right border-l border-slate-800 text-emerald-400">{formatCurrency(filteredData.reduce((s, c) => s + (c.management_net || 0), 0))}</td>
                 <td className="px-4 py-4 text-right border-l border-slate-800 text-blue-400">
                   {formatCurrency(filteredData.reduce((s, c) => s + (c.payments?.reduce((pSum, p) => pSum + p.amount, 0) || 0), 0))}
                 </td>
                 <td className="px-4 py-4 text-right border-l border-slate-800 text-rose-400">
                   {formatCurrency(
-                    filteredData.reduce((s, c) => s + c.gross_amount, 0) -
+                    filteredData.reduce((s, c) => s + (c.management_net || 0), 0) -
                     filteredData.reduce((s, c) => s + (c.payments?.reduce((pSum, p) => pSum + p.amount, 0) || 0), 0)
                   )}
                 </td>

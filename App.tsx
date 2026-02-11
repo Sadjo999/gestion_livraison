@@ -11,7 +11,14 @@ const SETTINGS_KEY = 'sand_app_settings';
 
 const DEFAULT_SETTINGS: AppSettings = {
   defaultCommissionRate: 35,
-  customSandTypes: [SandCategory.ZERO_FORTY, SandCategory.EIGHT_SIXTEEN, SandCategory.FOUR_EIGHT, SandCategory.OTHER],
+  customSandTypes: ['0/10', '4/8', '0/4', '8/16', '16/25'],
+  granitePrices: {
+    '0/10': 220000,
+    '4/8': 220000,
+    '0/4': 220000,
+    '8/16': 230000,
+    '16/25': 220000
+  },
   currencySymbol: 'GNF',
   paymentMethods: ['Espèces', 'Orange Money', 'Virement', 'Chèque']
 };
@@ -40,8 +47,9 @@ const App: React.FC = () => {
           defaultCommissionRate: data.default_commission_rate,
           currencySymbol: data.currency_symbol,
           customSandTypes: data.custom_sand_types || [],
+          granitePrices: data.granite_prices || DEFAULT_SETTINGS.granitePrices,
           paymentMethods: data.payment_methods || []
-        });
+        } as any);
       }
     } catch (err) {
       console.error('Unexpected error fetching settings:', err);
@@ -56,6 +64,7 @@ const App: React.FC = () => {
         default_commission_rate: newSettings.defaultCommissionRate,
         currency_symbol: newSettings.currencySymbol,
         custom_sand_types: newSettings.customSandTypes,
+        granite_prices: newSettings.granitePrices,
         payment_methods: newSettings.paymentMethods
       };
 
@@ -120,8 +129,14 @@ const App: React.FC = () => {
           .update({
             delivery_date: delivery.delivery_date,
             sand_type: delivery.sand_type,
-            client: delivery.client,
+            volume: delivery.volume,
+            unit_price: delivery.unit_price,
             gross_amount: delivery.gross_amount,
+            management_share: delivery.management_share,
+            partner_share: delivery.partner_share,
+            agent_commission: delivery.agent_commission,
+            management_net: delivery.management_net,
+            client: delivery.client,
             commission_rate: delivery.commission_rate,
             commission_amount: delivery.commission_amount,
             net_amount: delivery.net_amount,
@@ -189,7 +204,9 @@ const App: React.FC = () => {
     const initial = {
       totalGross: 0,
       totalCommission: 0,
-      totalNetTheoretical: 0, // Montant total facturé aux clients après comm
+      totalPartner: 0,
+      totalManagementShare: 0,
+      totalNetTheoretical: 0, // Montant net direction
       totalEncaisse: 0,       // Montant réellement reçu en caisse
       totalDebt: 0,           // Ce qui reste à recouvrer
       invoiceCount: deliveries.length
@@ -197,8 +214,10 @@ const App: React.FC = () => {
 
     return deliveries.reduce((acc, curr) => {
       acc.totalGross += curr.gross_amount;
-      acc.totalCommission += curr.commission_amount;
-      acc.totalNetTheoretical += curr.net_amount;
+      acc.totalCommission += curr.agent_commission || 0;
+      acc.totalPartner += curr.partner_share || 0;
+      acc.totalManagementShare += curr.management_share || 0;
+      acc.totalNetTheoretical += curr.management_net || 0;
 
       const paid = curr.payments?.reduce((sum, p) => sum + p.amount, 0) || 0;
       acc.totalEncaisse += paid;
@@ -214,10 +233,12 @@ const App: React.FC = () => {
   const mappedStats = useMemo(() => ({
     totalGross: stats.totalGross,
     totalCommission: stats.totalCommission,
-    totalNet: stats.totalEncaisse, // For the Dashboard "Net" card, we show what's actually collected
+    totalNet: stats.totalEncaisse,
     totalDebt: stats.totalDebt,
     invoiceCount: stats.invoiceCount,
-    totalNetTheoretical: stats.totalNetTheoretical // Extra info
+    totalNetTheoretical: stats.totalNetTheoretical,
+    totalPartner: stats.totalPartner,
+    totalManagementShare: stats.totalManagementShare
   }), [stats]);
 
   const NavItem = ({ id, label, icon: Icon }: { id: typeof activeTab, label: string, icon: any }) => (

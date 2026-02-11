@@ -108,8 +108,8 @@ const SettingsView: React.FC<Props> = ({ settings, onSave }) => {
             <div className="flex gap-2">
               <input
                 type="text"
-                placeholder="Ex: 30m³ de Gravier"
-                className="flex-1 p-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none"
+                placeholder="Ex: 0/10"
+                className="flex-[2] p-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none"
                 value={newType}
                 onChange={e => setNewType(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && handleAddType()}
@@ -122,11 +122,28 @@ const SettingsView: React.FC<Props> = ({ settings, onSave }) => {
                 <Plus className="w-5 h-5" />
               </button>
             </div>
-            <div className="flex flex-wrap gap-2">
+            <div className="grid grid-cols-1 gap-2">
               {localSettings.customSandTypes.map(type => (
-                <div key={type} className="flex items-center gap-2 bg-slate-50 border border-slate-100 px-3 py-1.5 rounded-full text-sm">
-                  <span>{type}</span>
-                  <button onClick={() => handleRemoveType(type)} className="text-rose-400 hover:text-rose-600">
+                <div key={type} className="flex items-center gap-2 bg-slate-50 border border-slate-100 px-3 py-2 rounded-xl text-sm justify-between">
+                  <div className="flex items-center gap-4 flex-1">
+                    <span className="font-bold w-12">{type}</span>
+                    <div className="flex items-center gap-2 flex-1 max-w-[200px]">
+                      <input
+                        type="number"
+                        className="w-full p-1 bg-white border border-slate-200 rounded-lg text-right font-mono"
+                        value={localSettings.granitePrices?.[type] || 0}
+                        onChange={e => setLocalSettings(prev => ({
+                          ...prev,
+                          granitePrices: {
+                            ...(prev.granitePrices || {}),
+                            [type]: Number(e.target.value)
+                          }
+                        }))}
+                      />
+                      <span className="text-[10px] text-slate-400 font-bold uppercase">{localSettings.currencySymbol}</span>
+                    </div>
+                  </div>
+                  <button onClick={() => handleRemoveType(type)} className="text-rose-400 hover:bg-rose-50 p-1.5 rounded-lg transition-colors">
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </div>

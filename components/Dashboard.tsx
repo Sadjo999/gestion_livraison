@@ -23,12 +23,11 @@ const Dashboard: React.FC<Props> = ({ deliveries, stats }) => {
 
   const clientData = React.useMemo(() => {
     const groups = deliveries.reduce((acc, curr) => {
-      acc[curr.client] = (acc[curr.client] || 0) + curr.net_amount;
+      acc[curr.client] = (acc[curr.client] || 0) + (curr.management_net || 0);
       return acc;
     }, {} as Record<string, number>);
     return Object.entries(groups)
       .map(([name, value]) => ({ name, value }))
-      // Fix: Explicitly cast values to number for subtraction to resolve TypeScript's arithmetic operation requirement
       .sort((a, b) => (b.value as number) - (a.value as number))
       .slice(0, 5);
   }, [deliveries]);
@@ -50,7 +49,7 @@ const Dashboard: React.FC<Props> = ({ deliveries, stats }) => {
   return (
     <div className="space-y-8">
       {/* KPI Section */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           title="CA Brut Total"
           value={formatCurrency(stats.totalGross)}
@@ -58,36 +57,51 @@ const Dashboard: React.FC<Props> = ({ deliveries, stats }) => {
           color="blue"
         />
         <StatCard
-          title="Net Théorique (Facturé)"
-          value={formatCurrency(stats.totalNetTheoretical || 0)}
+          title="Part Partenaires"
+          value={formatCurrency(stats.totalPartner || 0)}
+          icon={<TrendingUp className="text-slate-400" />}
+          color="slate"
+          subtitle="Argent dû aux chinois"
+        />
+        <StatCard
+          title="Part Direction (Gross)"
+          value={formatCurrency(stats.totalManagementShare || 0)}
+          icon={<ShoppingCart className="text-indigo-500" />}
+          color="indigo"
+          subtitle="Valeur cumulée des 3m³"
+        />
+        <StatCard
+          title="Comm. Agents"
+          value={formatCurrency(stats.totalCommission)}
           icon={<Percent className="text-amber-500" />}
           color="amber"
-          subtitle="Montant dû par les clients"
+          subtitle="Part payée aux apporteurs"
         />
         <StatCard
-          title="Total Encaissé (Réel)"
-          value={formatCurrency(stats.totalNet)}
-          icon={<Wallet className="text-emerald-500" />}
+          title="Net Direction (Théo)"
+          value={formatCurrency(stats.totalNetTheoretical || 0)}
+          icon={<Percent className="text-emerald-500" />}
           color="emerald"
-          subtitle="Argent reçu en caisse"
+          subtitle="Gain direction après commissions"
         />
         <StatCard
-          title="Reste à Recouvrer"
+          title="Réel Encaissé (Direction)"
+          value={formatCurrency(stats.totalNet)}
+          icon={<Wallet className="text-emerald-600" />}
+          color="emerald"
+          subtitle="Argent direction en caisse"
+        />
+        <StatCard
+          title="Dettes Clients"
           value={formatCurrency(stats.totalDebt)}
           icon={<AlertCircle className="text-rose-500" />}
           color="rose"
-          subtitle="Dettes clients"
+          subtitle="Reste à recouvrer total"
         />
         <StatCard
-          title="Commissions"
-          value={formatCurrency(stats.totalCommission)}
-          icon={<Percent className="text-slate-500" />}
-          color="slate"
-        />
-        <StatCard
-          title="Nombre de Livraisons"
+          title="Livraisons"
           value={stats.invoiceCount.toString()}
-          icon={<Truck className="text-indigo-500" />}
+          icon={<Truck className="text-indigo-400" />}
           color="indigo"
         />
       </div>

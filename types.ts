@@ -4,12 +4,18 @@ export interface Delivery {
   created_at?: string;
   delivery_date: string;
   sand_type: string;
+  volume: number;        // en m³
+  unit_price: number;    // prix par m³
+  gross_amount: number;  // volume * unit_price
+  management_share: number; // 3m³ * unit_price
+  partner_share: number;    // gross_amount - management_share
+  agent_commission: number; // 35% de management_share
+  management_net: number;    // 65% de management_share
   client: string;
   payment_date: string | null;
-  gross_amount: number;
-  commission_rate: number;
-  commission_amount: number;
-  net_amount: number;
+  commission_rate: number; // stored for reference (legacy or custom)
+  commission_amount: number; // stored for reference
+  net_amount: number;     // for backward compatibility, same as management_net or relevant total
   truck_number: string;
   notes?: string;
   user_id?: string;
@@ -18,11 +24,13 @@ export interface Delivery {
 
 export interface FinancialStats {
   totalGross: number;
-  totalCommission: number;
-  totalNet: number;
+  totalCommission: number; // Part agent
+  totalNet: number; // Réellement encaissé
   totalDebt: number;
   invoiceCount: number;
-  totalNetTheoretical?: number;
+  totalNetTheoretical?: number; // Net direction théorique
+  totalPartner?: number;
+  totalManagementShare?: number;
 }
 
 export interface Payment {
@@ -38,6 +46,7 @@ export interface Payment {
 export interface AppSettings {
   defaultCommissionRate: number;
   customSandTypes: string[];
+  granitePrices: Record<string, number>; // Mapping type -> prix/m³
   currencySymbol: string;
   paymentMethods: string[];
 }
