@@ -260,7 +260,7 @@ const App: React.FC = () => {
       <div className="md:hidden bg-slate-900 text-white p-4 flex items-center justify-between sticky top-0 z-50 shadow-md">
         <div className="flex items-center gap-2">
           <Truck className="w-6 h-6 text-amber-500" />
-          <span className="font-bold text-lg">SandLogix</span>
+          <span className="font-bold text-lg">GranitLogix</span>
         </div>
         <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="p-2">
           {isMobileMenuOpen ? <X /> : <Menu />}
@@ -277,7 +277,7 @@ const App: React.FC = () => {
             <Truck className="text-white w-6 h-6" />
           </div>
           <div>
-            <h1 className="text-xl font-black text-slate-800 tracking-tighter leading-none">SandLogix</h1>
+            <h1 className="text-xl font-black text-slate-800 tracking-tighter leading-none">GranitLogix</h1>
             <p className="text-[10px] font-bold text-amber-600 uppercase tracking-widest mt-0.5">Gestion Pro de Livraison</p>
           </div>
         </div>
@@ -290,7 +290,7 @@ const App: React.FC = () => {
         </div>
 
         <div className="mt-auto pt-6 border-t border-slate-800 text-slate-500 text-xs flex flex-col gap-1">
-          <p>SandLogix Mobile Ready</p>
+          <p>GranitLogix Mobile Ready</p>
           <p>v1.2.0 - Gestion Tranches</p>
         </div>
       </nav>

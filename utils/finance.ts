@@ -6,16 +6,21 @@ export const calculateCommission = (gross: number, rate: number): number => {
 };
 
 /**
- * New calculation logic for granite deliveries:
- * 1. Management Share = 3m³ * unitPrice
- * 2. Partner Share = (Volume - 3) * unitPrice
- * 3. Agent Commission = 35% of Management Share
- * 4. Management Net = 65% of Management Share
+ * Logic for granite deliveries:
+ * 1. Max 30m³ per truck. Min 10m³ per truck.
+ * 2. Each truck counts for 3m³ of Management Share.
+ * 3. Management Share = truckCount * 3 * unitPrice
+ * 4. Partner Share = (Total Volume - (truckCount * 3)) * unitPrice
+ * 5. Agent Commission = X% of Management Share
+ * 6. Management Net = Management Share - Agent Commission
  */
 export const calculateGraniteFinances = (volume: number, unitPrice: number, agentRate: number = 35) => {
+  const truckCount = Math.max(1, Math.ceil(volume / 30));
+  const managementVolume = truckCount * 3;
+
   const grossAmount = volume * unitPrice;
-  const managementShare = Math.min(3, volume) * unitPrice; // If volume < 3, management takes all
-  const partnerShare = Math.max(0, volume - 3) * unitPrice;
+  const managementShare = managementVolume * unitPrice;
+  const partnerShare = Math.max(0, volume - managementVolume) * unitPrice;
 
   const agentCommission = (managementShare * agentRate) / 100;
   const managementNet = managementShare - agentCommission;
@@ -25,7 +30,8 @@ export const calculateGraniteFinances = (volume: number, unitPrice: number, agen
     managementShare,
     partnerShare,
     agentCommission,
-    managementNet
+    managementNet,
+    truckCount
   };
 };
 
@@ -34,11 +40,8 @@ export const calculateNet = (gross: number, commission: number): number => {
 };
 
 export const formatCurrency = (amount: number): string => {
-  return new Intl.NumberFormat('fr-FR', {
-    style: 'currency',
-    currency: 'GNF', // Guinean Franc
-    maximumFractionDigits: 0,
-  }).format(amount);
+  if (amount === undefined || amount === null) return "0 GNF";
+  return Math.round(amount).toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ") + " GNF";
 };
 
 export const getRemainingBalance = (delivery: Delivery): number => {

@@ -102,7 +102,7 @@ const SettingsView: React.FC<Props> = ({ settings, onSave }) => {
         <section className="space-y-4">
           <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
             <span className="w-1 h-6 bg-amber-500 rounded-full"></span>
-            Types de Sable
+            Types
           </h3>
           <div className="space-y-3">
             <div className="flex gap-2">

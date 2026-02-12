@@ -36,7 +36,8 @@ const DeliveryForm: React.FC<Props> = ({ onSubmit, initialData, onCancel, settin
     managementShare: 0,
     partnerShare: 0,
     agentCommission: 0,
-    managementNet: 0
+    managementNet: 0,
+    truckCount: 0
   });
 
   const [netAmount, setNetAmount] = useState(0);
@@ -50,8 +51,12 @@ const DeliveryForm: React.FC<Props> = ({ onSubmit, initialData, onCancel, settin
 
   const handlePreliminarySubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.client || !formData.gross_amount) {
-      alert("Veuillez remplir les champs obligatoires (Client et Montant Brut)");
+    if (!formData.client || !formData.volume) {
+      alert("Veuillez remplir les champs obligatoires (Client et Volume)");
+      return;
+    }
+    if (formData.volume < 10) {
+      alert("Le volume minimum pour une livraison est de 10 m³.");
       return;
     }
     setShowConfirm(true);
@@ -114,7 +119,7 @@ const DeliveryForm: React.FC<Props> = ({ onSubmit, initialData, onCancel, settin
 
         {/* Basic Info */}
         <div className="space-y-1">
-          <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">🏗️ Type de Sable</label>
+          <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">🏗️ Type</label>
           <select
             className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-amber-500 focus:bg-white transition-all outline-none"
             value={formData.sand_type}
@@ -182,7 +187,7 @@ const DeliveryForm: React.FC<Props> = ({ onSubmit, initialData, onCancel, settin
             </div>
           </div>
           <div className="space-y-1 border-l border-slate-800 pl-4">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Part Direction (3m³)</span>
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Part Direction ({finances.truckCount > 1 ? `${finances.truckCount} camions` : '1 camion'})</span>
             <div className="text-blue-400 font-mono font-bold text-lg leading-none">
               {formatCurrency(finances.managementShare)}
             </div>
@@ -313,7 +318,7 @@ const DeliveryForm: React.FC<Props> = ({ onSubmit, initialData, onCancel, settin
                 <div className="text-slate-500">Part Partenaire (Reste):</div>
                 <div className="font-mono text-right text-slate-600">{formatCurrency(finances.partnerShare)}</div>
 
-                <div className="text-slate-500">Part Direction (Val. 3m³):</div>
+                <div className="text-slate-500">Part Direction ({finances.truckCount} camions):</div>
                 <div className="font-mono text-right text-blue-600 font-bold">{formatCurrency(finances.managementShare)}</div>
 
                 <div className="text-slate-500 pl-4">- Comm Agent ({formData.commission_rate}%):</div>

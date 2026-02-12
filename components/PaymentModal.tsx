@@ -103,8 +103,8 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
     if (!isOpen) return null;
 
     const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
-    const remaining = delivery.net_amount - totalPaid;
-    const progress = Math.min((totalPaid / delivery.net_amount) * 100, 100);
+    const remaining = delivery.gross_amount - totalPaid;
+    const progress = Math.min((totalPaid / delivery.gross_amount) * 100, 100);
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -130,7 +130,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div className="bg-slate-50 p-4 rounded-lg border border-slate-100">
                             <span className="text-sm text-slate-500 block mb-1">Total à Payer</span>
-                            <span className="text-lg font-bold text-slate-800">{formatCurrency(delivery.net_amount)}</span>
+                            <span className="text-lg font-bold text-slate-800">{formatCurrency(delivery.gross_amount)}</span>
                         </div>
                         <div className="bg-emerald-50 p-4 rounded-lg border border-emerald-100">
                             <span className="text-sm text-emerald-600 block mb-1">Total Payé</span>

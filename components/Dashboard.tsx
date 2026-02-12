@@ -134,7 +134,7 @@ const Dashboard: React.FC<Props> = ({ deliveries, stats }) => {
 
         {/* Sand Type Pie Chart */}
         <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-          <h3 className="text-lg font-semibold mb-6">Répartition par Type de Sable</h3>
+          <h3 className="text-lg font-semibold mb-6">Répartition par Type</h3>
           <div style={{ width: '100%', height: '300px', minHeight: '300px' }}>
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
