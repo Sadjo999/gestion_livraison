@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Delivery, AppSettings } from '../types';
 import { calculateCommission, calculateNet, formatCurrency, calculateGraniteFinances } from '../utils/finance';
-import { Save, X } from 'lucide-react';
+import { Save, X, Calculator } from 'lucide-react';
 
 interface Props {
   onSubmit: (delivery: Delivery, initialPayment?: { amount: number, method: string }) => void;
@@ -37,17 +37,18 @@ const DeliveryForm: React.FC<Props> = ({ onSubmit, initialData, onCancel, settin
     partnerShare: 0,
     agentCommission: 0,
     managementNet: 0,
-    truckCount: 0
+    truckCount: 0,
+    otherFees: 0
   });
 
   const [netAmount, setNetAmount] = useState(0);
 
   useEffect(() => {
     const unitPrice = settings.granitePrices?.[formData.sand_type || ''] || 0;
-    const results = calculateGraniteFinances(formData.volume || 0, unitPrice, formData.commission_rate || 35);
+    const results = calculateGraniteFinances(formData.volume || 0, unitPrice, formData.commission_rate || 35, settings.otherFees || 0);
     setFinances(results);
     setNetAmount(results.managementNet);
-  }, [formData.volume, formData.sand_type, formData.commission_rate, settings.granitePrices]);
+  }, [formData.volume, formData.sand_type, formData.commission_rate, settings.granitePrices, settings.otherFees]);
 
   const handlePreliminarySubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -66,12 +67,14 @@ const DeliveryForm: React.FC<Props> = ({ onSubmit, initialData, onCancel, settin
     const unitPrice = settings.granitePrices?.[formData.sand_type || ''] || 0;
     const newDelivery: Delivery = {
       id: initialData?.id || '',
+      user_id: initialData?.user_id || '',
       delivery_date: formData.delivery_date!,
       sand_type: formData.sand_type!,
       volume: Number(formData.volume),
       unit_price: unitPrice,
       gross_amount: finances.grossAmount,
       management_share: finances.managementShare,
+      other_fees: finances.otherFees,
       partner_share: finances.partnerShare,
       agent_commission: finances.agentCommission,
       management_net: finances.managementNet,
@@ -94,208 +97,212 @@ const DeliveryForm: React.FC<Props> = ({ onSubmit, initialData, onCancel, settin
   };
 
   return (
-    <form onSubmit={handlePreliminarySubmit} className="space-y-5">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
-        {/* Dates */}
-        <div className="space-y-1">
-          <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">📅 Date de Livraison</label>
-          <input
-            type="date"
-            required
-            className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-amber-500 focus:bg-white transition-all outline-none"
-            value={formData.delivery_date}
-            onChange={e => setFormData(prev => ({ ...prev, delivery_date: e.target.value }))}
-          />
-        </div>
-        <div className="space-y-1">
-          <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">📆 Date de Paiement</label>
-          <input
-            type="date"
-            className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-amber-500 focus:bg-white transition-all outline-none"
-            value={formData.payment_date || ''}
-            onChange={e => setFormData(prev => ({ ...prev, payment_date: e.target.value }))}
-          />
-        </div>
-
-        {/* Basic Info */}
-        <div className="space-y-1">
-          <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">🏗️ Type</label>
-          <select
-            className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-amber-500 focus:bg-white transition-all outline-none"
-            value={formData.sand_type}
-            onChange={e => setFormData(prev => ({ ...prev, sand_type: e.target.value }))}
-          >
-            {settings.customSandTypes.map(cat => (
-              <option key={cat} value={cat}>{cat}</option>
-            ))}
-          </select>
-        </div>
-        <div className="space-y-1">
-          <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">👤 Client / Destination</label>
-          <input
-            type="text"
-            placeholder="Entrez le nom..."
-            required
-            className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-amber-500 focus:bg-white transition-all outline-none"
-            value={formData.client}
-            onChange={e => setFormData(prev => ({ ...prev, client: e.target.value }))}
-          />
-        </div>
-
-        {/* Financials */}
-        <div className="space-y-1">
-          <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">📦 Volume (m³)</label>
-          <input
-            type="number"
-            step="0.01"
-            required
-            placeholder="Ex: 30"
-            className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-amber-500 focus:bg-white transition-all outline-none font-mono"
-            value={formData.volume || ''}
-            onChange={e => setFormData(prev => ({ ...prev, volume: Number(e.target.value) }))}
-          />
-        </div>
-        <div className="space-y-1">
-          <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">🏷️ Prix Unitaire (/m³)</label>
-          <div className="p-3 bg-slate-100 border border-slate-200 rounded-xl text-slate-600 font-mono">
-            {formatCurrency(settings.granitePrices?.[formData.sand_type || ''] || 0)}
-          </div>
-        </div>
-        <div className="space-y-1">
-          <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">📊 Commission (%)</label>
-          <input
-            type="number"
-            min="0"
-            max="100"
-            className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-amber-500 focus:bg-white transition-all outline-none font-mono"
-            value={formData.commission_rate}
-            onChange={e => setFormData(prev => ({ ...prev, commission_rate: Number(e.target.value) }))}
-          />
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4 p-4 bg-slate-900 rounded-2xl md:col-span-2">
-          <div className="space-y-1">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Montant Brut</span>
-            <div className="text-white font-mono font-bold text-lg leading-none">
-              {formatCurrency(finances.grossAmount)}
-            </div>
-          </div>
-          <div className="space-y-1 border-l border-slate-800 pl-4">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Part Partenaire</span>
-            <div className="text-slate-300 font-mono font-bold text-lg leading-none">
-              {formatCurrency(finances.partnerShare)}
-            </div>
-          </div>
-          <div className="space-y-1 border-l border-slate-800 pl-4">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Part Direction ({finances.truckCount > 1 ? `${finances.truckCount} camions` : '1 camion'})</span>
-            <div className="text-blue-400 font-mono font-bold text-lg leading-none">
-              {formatCurrency(finances.managementShare)}
-            </div>
-          </div>
-          <div className="space-y-1 border-l border-slate-800 pl-4">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Comm Agent ({formData.commission_rate}%)</span>
-            <div className="text-amber-400 font-mono font-bold text-lg leading-none">
-              {formatCurrency(finances.agentCommission)}
-            </div>
-          </div>
-          <div className="space-y-1 border-l border-slate-800 pl-4">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Net Direction (65%)</span>
-            <div className={`font-mono font-bold text-lg leading-none ${finances.managementNet < 0 ? 'text-rose-400' : 'text-emerald-400'}`}>
-              {formatCurrency(finances.managementNet)}
-            </div>
-          </div>
-        </div>
-
-        {!initialData && (
-          <>
-            <div className="space-y-1">
-              <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">💵 Avance (Acompte)</label>
-              <input
-                type="number"
-                step="0.01"
-                placeholder="0.00"
-                className="w-full p-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 transition-all outline-none font-mono"
-                value={formData.initial_payment || ''}
-                onChange={e => setFormData(prev => ({ ...prev, initial_payment: Number(e.target.value) }))}
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">💳 Mode de Paiement</label>
-              <select
-                className="w-full p-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 transition-all outline-none"
-                value={formData.payment_method}
-                onChange={e => setFormData(prev => ({ ...prev, payment_method: e.target.value }))}
-              >
-                {settings.paymentMethods.map(m => (
-                  <option key={m} value={m}>{m}</option>
-                ))}
-              </select>
-            </div>
-
-            <div className="md:col-span-2 p-4 bg-emerald-950 border border-emerald-900 rounded-2xl flex justify-between items-center">
-              <div className="space-y-0.5">
-                <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">Reste à Payer (Client)</span>
-                <p className="text-xs text-emerald-400/60 leading-tight">Basé sur le montant brut total</p>
-              </div>
-              <div className="text-emerald-400 font-black text-2xl tracking-tight font-mono">
-                {formatCurrency((finances.grossAmount || 0) - (formData.initial_payment || 0))}
-              </div>
-            </div>
-          </>
-        )}
-
-        <div className="space-y-1">
-          <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">🚚 Truck / Camion</label>
-          <input
-            type="text"
-            placeholder="Plaque..."
-            className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-amber-500 focus:bg-white transition-all outline-none"
-            value={formData.truck_number}
-            onChange={e => setFormData(prev => ({ ...prev, truck_number: e.target.value }))}
-          />
-        </div>
-        <div className="space-y-1">
-          <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">📝 Notes</label>
-          <input
-            type="text"
-            placeholder="Infos utiles..."
-            className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-amber-500 focus:bg-white transition-all outline-none"
-            value={formData.notes || ''}
-            onChange={e => setFormData(prev => ({ ...prev, notes: e.target.value }))}
-          />
+    <form onSubmit={handlePreliminarySubmit} className="space-y-8 animate-slide-up">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-xl font-bold text-slate-900 font-lexend tracking-tight">Configuration Livraison</h2>
+          <p className="text-slate-500 text-xs mt-1">Saisie des détails opérationnels et financiers.</p>
         </div>
       </div>
 
-      <div className="flex flex-col md:flex-row gap-3 pt-6 border-t border-slate-100">
-        <button
-          type="submit"
-          className="flex-1 bg-amber-600 hover:bg-amber-700 text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-2 transition-all active:scale-[0.98] shadow-lg shadow-amber-200"
-        >
-          <Save className="w-5 h-5" />
-          {initialData ? "Mettre à jour" : "Confirmer l'Enregistrement"}
-        </button>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* Left Column: Operation Details */}
+        <div className="space-y-6">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Date Livraison</label>
+              <input
+                type="date"
+                required
+                className="w-full px-5 py-3 rounded-xl border border-slate-200 focus:ring-4 focus:ring-slate-500/10 focus:border-slate-500 outline-none transition-all font-medium bg-slate-50/50"
+                value={formData.delivery_date}
+                onChange={e => setFormData(prev => ({ ...prev, delivery_date: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Date Paiement</label>
+              <input
+                type="date"
+                className="w-full px-5 py-3 rounded-xl border border-slate-200 focus:ring-4 focus:ring-slate-500/10 focus:border-slate-500 outline-none transition-all font-medium bg-slate-50/50"
+                value={formData.payment_date || ''}
+                onChange={e => setFormData(prev => ({ ...prev, payment_date: e.target.value }))}
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Client / Destination</label>
+            <input
+              type="text"
+              placeholder="Nom du client ou site..."
+              required
+              className="w-full px-5 py-3 rounded-xl border border-slate-200 focus:ring-4 focus:ring-slate-500/10 focus:border-slate-500 outline-none transition-all font-medium"
+              value={formData.client}
+              onChange={e => setFormData(prev => ({ ...prev, client: e.target.value }))}
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Type de Granite</label>
+              <select
+                className="w-full px-5 py-3 rounded-xl border border-slate-200 focus:ring-4 focus:ring-slate-500/10 focus:border-slate-500 outline-none transition-all font-medium appearance-none bg-white cursor-pointer"
+                value={formData.sand_type}
+                onChange={e => setFormData(prev => ({ ...prev, sand_type: e.target.value }))}
+              >
+                {settings.customSandTypes.map(cat => (
+                  <option key={cat} value={cat}>{cat}</option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Immatriculation</label>
+              <input
+                type="text"
+                placeholder="Ex: TK-1234"
+                className="w-full px-5 py-3 rounded-xl border border-slate-200 focus:ring-4 focus:ring-slate-500/10 focus:border-slate-500 outline-none transition-all font-medium uppercase"
+                value={formData.truck_number}
+                onChange={e => setFormData(prev => ({ ...prev, truck_number: e.target.value }))}
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Notes Internes</label>
+            <textarea
+              placeholder="Observation sur la livraison..."
+              className="w-full px-5 py-3 rounded-xl border border-slate-200 focus:ring-4 focus:ring-slate-500/10 focus:border-slate-500 outline-none transition-all font-medium min-h-[100px]"
+              value={formData.notes || ''}
+              onChange={e => setFormData(prev => ({ ...prev, notes: e.target.value }))}
+            />
+          </div>
+        </div>
+
+        {/* Right Column: Financial Calculations */}
+        <div className="space-y-6">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Volume (M³)</label>
+              <input
+                type="number"
+                step="0.01"
+                required
+                placeholder="Ex: 30"
+                className="w-full px-5 py-4 rounded-xl border-none focus:ring-4 focus:ring-slate-500/10 outline-none transition-all font-mono font-bold text-xl bg-slate-900 text-white"
+                value={formData.volume || ''}
+                onChange={e => setFormData(prev => ({ ...prev, volume: Number(e.target.value) }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Commission (%)</label>
+              <input
+                type="number"
+                className="w-full px-5 py-4 rounded-xl border border-slate-200 focus:ring-4 focus:ring-slate-500/10 focus:border-slate-500 outline-none transition-all font-bold text-xl"
+                value={formData.commission_rate}
+                onChange={e => setFormData(prev => ({ ...prev, commission_rate: Number(e.target.value) }))}
+              />
+            </div>
+          </div>
+
+          {/* Simplified Finance Recap Card */}
+          <div className="premium-card p-6 bg-slate-900 text-white border-none shadow-xl relative overflow-hidden">
+            <div className="space-y-4 relative z-10">
+              <div className="flex justify-between items-end border-b border-white/10 pb-4">
+                <div>
+                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">Estimation Brut</span>
+                  <div className="text-2xl font-bold font-mono">{formatCurrency(finances.grossAmount)}</div>
+                </div>
+                <div className="text-right">
+                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">Prix Moyen</span>
+                  <div className="text-xs font-semibold text-slate-300">{formatCurrency(settings.granitePrices?.[formData.sand_type || ''] || 0)}</div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">Part Direction</span>
+                  <div className="text-base font-bold text-white font-mono">{formatCurrency(finances.managementShare)}</div>
+                </div>
+                <div className="text-right">
+                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">Com. Agent (Recalculée)</span>
+                  <div className="text-base font-bold text-amber-400 font-mono">-{formatCurrency(finances.agentCommission)}</div>
+                </div>
+              </div>
+
+              <div className="bg-emerald-500/20 rounded-xl p-4 flex justify-between items-center border border-emerald-500/30">
+                <span className="text-[9px] font-bold text-emerald-400 uppercase tracking-wider">Bénéfice Net LogLogix</span>
+                <span className="text-xl font-bold text-emerald-400 font-mono">{formatCurrency(finances.managementNet)}</span>
+              </div>
+            </div>
+          </div>
+
+          {!initialData && (
+            <div className="p-6 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Acompte Client</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-slate-500 outline-none transition-all font-mono font-bold"
+                    value={formData.initial_payment || ''}
+                    onChange={e => setFormData(prev => ({ ...prev, initial_payment: Number(e.target.value) }))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Mode</label>
+                  <select
+                    className="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none font-bold"
+                    value={formData.payment_method}
+                    onChange={e => setFormData(prev => ({ ...prev, payment_method: e.target.value }))}
+                  >
+                    {settings.paymentMethods.map(m => (
+                      <option key={m} value={m}>{m}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div className="flex justify-between items-center border-t border-slate-100 pt-3">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Solde Attendu</span>
+                <span className="text-lg font-bold text-slate-900 font-mono">
+                  {formatCurrency(finances.grossAmount - (formData.initial_payment || 0))}
+                </span>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="flex flex-col md:flex-row gap-4 pt-8 border-t border-slate-100 mb-10">
         <button
           type="button"
           onClick={onCancel}
-          className="px-8 bg-slate-100 hover:bg-slate-200 text-slate-600 py-4 rounded-2xl font-bold transition-all active:scale-[0.98]"
+          className="px-10 py-4 font-bold text-xs text-slate-500 hover:text-slate-900 rounded-xl transition-all"
         >
           Annuler
+        </button>
+        <button
+          type="submit"
+          className="flex-1 bg-slate-900 text-white py-4 rounded-xl font-bold text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-all hover:bg-slate-800 shadow-lg active:scale-95"
+        >
+          <Save className="w-4 h-4" />
+          {initialData ? "Enregistrer" : "Confirmer la Livraison"}
         </button>
       </div>
 
       {/* Confirmation Modal */}
       {showConfirm && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in duration-200">
-            <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-              <h3 className="text-xl font-black text-slate-800">Vérification de la Livraison</h3>
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in duration-200">
+            <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
+              <h3 className="text-xl font-bold text-slate-800 font-lexend">Vérification Finale</h3>
               <button onClick={() => setShowConfirm(false)} className="text-slate-400 hover:text-slate-600">
                 <X className="w-6 h-6" />
               </button>
             </div>
 
-            <div className="p-6 space-y-6">
-              <div className="grid grid-cols-2 gap-y-4 text-sm">
+            <div className="p-6 space-y-6 overflow-y-auto flex-1">
+              <div className="grid grid-cols-2 gap-y-3 text-sm">
                 <div className="text-slate-500">Date:</div>
                 <div className="font-bold text-right">{formData.delivery_date}</div>
 
@@ -303,43 +310,28 @@ const DeliveryForm: React.FC<Props> = ({ onSubmit, initialData, onCancel, settin
                 <div className="font-bold text-right">{formData.client}</div>
 
                 <div className="text-slate-500">Camion:</div>
-                <div className="font-bold text-right text-amber-600">{formData.truck_number}</div>
+                <div className="font-bold text-right">{formData.truck_number}</div>
 
-                <div className="col-span-2 border-t border-slate-100 pt-4"></div>
+                <div className="col-span-2 border-t border-slate-100 pt-3"></div>
 
-                <div className="text-slate-500">Volume:</div>
-                <div className="font-bold text-right">{formData.volume} m³</div>
+                <div className="text-slate-500">Volume & Type:</div>
+                <div className="font-bold text-right">{formData.volume} m³ ({formData.sand_type})</div>
 
-                <div className="text-slate-500">Montant Brut Total:</div>
+                <div className="text-slate-500">Montant Brut:</div>
                 <div className="font-mono font-bold text-right text-lg">{formatCurrency(finances.grossAmount)}</div>
 
                 <div className="col-span-2 border-t border-slate-100 pt-2"></div>
 
-                <div className="text-slate-500">Part Partenaire (Reste):</div>
-                <div className="font-mono text-right text-slate-600">{formatCurrency(finances.partnerShare)}</div>
-
-                <div className="text-slate-500">Part Direction ({finances.truckCount} camions):</div>
-                <div className="font-mono text-right text-blue-600 font-bold">{formatCurrency(finances.managementShare)}</div>
-
-                <div className="text-slate-500 pl-4">- Comm Agent ({formData.commission_rate}%):</div>
-                <div className="font-mono text-right text-amber-600">-{formatCurrency(finances.agentCommission)}</div>
-
-                <div className="text-slate-500 pl-4 font-bold">- Net Direction (65%):</div>
+                <div className="text-slate-500">Net Direction:</div>
                 <div className="font-mono font-bold text-right text-emerald-600">{formatCurrency(finances.managementNet)}</div>
 
                 {!initialData && (
-                  <>
-                    <div className="col-span-2 border-t border-slate-100 pt-4"></div>
-                    <div className="text-slate-500">Avance client:</div>
-                    <div className="font-mono font-bold text-right text-blue-600">{formatCurrency(formData.initial_payment || 0)}</div>
-
-                    <div className="col-span-2 bg-emerald-50 p-4 rounded-2xl mt-2 flex justify-between items-center">
-                      <span className="font-black text-emerald-800 uppercase text-xs">Reste à Payer Client</span>
-                      <span className="font-mono font-black text-emerald-700 text-xl">
-                        {formatCurrency(finances.grossAmount - (formData.initial_payment || 0))}
-                      </span>
-                    </div>
-                  </>
+                  <div className="col-span-2 bg-slate-50 p-4 rounded-xl mt-2 flex justify-between items-center">
+                    <span className="font-bold text-slate-500 text-xs">Paiement Initial</span>
+                    <span className="font-mono font-bold text-slate-900 text-lg">
+                      {formatCurrency(formData.initial_payment || 0)}
+                    </span>
+                  </div>
                 )}
               </div>
             </div>
@@ -348,16 +340,16 @@ const DeliveryForm: React.FC<Props> = ({ onSubmit, initialData, onCancel, settin
               <button
                 type="button"
                 onClick={() => setShowConfirm(false)}
-                className="flex-1 px-6 py-4 bg-white border border-slate-200 text-slate-600 rounded-2xl font-bold hover:bg-slate-50 transition-all"
+                className="flex-1 px-6 py-4 bg-white border border-slate-200 text-slate-600 rounded-xl font-bold hover:bg-slate-50 transition-all"
               >
                 Retour
               </button>
               <button
                 type="button"
                 onClick={handleFinalSubmit}
-                className="flex-[2] px-6 py-4 bg-slate-900 text-white rounded-2xl font-bold hover:bg-slate-800 transition-all shadow-lg shadow-slate-200"
+                className="flex-[2] px-6 py-4 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 transition-all shadow-lg"
               >
-                Confirmer et Enregistrer
+                Confirmer l'Envoi
               </button>
             </div>
           </div>

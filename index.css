@@ -1,11 +1,73 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Lexend:wght@300;400;500;600;700;800;900&display=swap');
 @import "tailwindcss";
 
 :root {
-  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  font-family: 'Inter', system-ui, sans-serif;
+  --glass-bg: rgba(255, 255, 255, 0.85);
+  --glass-border: rgba(226, 232, 240, 0.8);
+}
+
+.font-lexend {
+  font-family: 'Lexend', sans-serif;
 }
 
 body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
+  @apply bg-slate-50/50 text-slate-900 antialiased;
+}
+
+.premium-glass {
+  background: var(--glass-bg);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid var(--glass-border);
+}
+
+.premium-card {
+  @apply bg-white rounded-2xl border border-slate-200/50 shadow-sm transition-all duration-200;
+}
+
+.premium-card:hover {
+  @apply shadow-md border-slate-300/50;
+}
+
+.text-gradient-amber {
+  @apply text-amber-600;
+}
+
+.bg-gradient-premium {
+  @apply bg-slate-800;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-slate-200 rounded-full hover:bg-slate-300 transition-colors;
+}
+
+/* Animations */
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-up {
+  animation: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }

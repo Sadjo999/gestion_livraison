@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Delivery, AppSettings } from '../types';
+import { Delivery, AppSettings, Profile } from '../types';
 import { formatCurrency, getCumulativeBalances, getRemainingBalance } from '../utils/finance';
 import { Search, Filter, Download, Trash2, Edit, Edit2, ChevronLeft, ChevronRight, Calculator, Banknote, FileText, ChevronUp, ChevronDown } from 'lucide-react';
 import jsPDF from 'jspdf';
@@ -12,20 +12,37 @@ interface DeliveryTableProps {
   onDelete: (id: string) => void;
   onEdit: (delivery: Delivery) => void;
   onRefresh: () => void;
+  profile?: Profile;
 }
 
-const DeliveryTable: React.FC<DeliveryTableProps> = ({ deliveries, settings, onDelete, onEdit, onRefresh }) => {
+const DeliveryTable: React.FC<DeliveryTableProps> = ({ deliveries, settings, onDelete, onEdit, onRefresh, profile }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedDeliveryForPayments, setSelectedDeliveryForPayments] = useState<Delivery | null>(null);
   const [filterSand, setFilterSand] = useState<string>('');
   const [filterTruck, setFilterTruck] = useState<string>('');
   const [dateStart, setDateStart] = useState('');
   const [dateEnd, setDateEnd] = useState('');
-  const [commissionOnly, setCommissionOnly] = useState<boolean | null>(null);
+  const [selectedAgentId, setSelectedAgentId] = useState<string>('');
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
+
+  // Get unique agents from deliveries for filtering
+  const agents = useMemo(() => {
+    const map = new Map();
+    deliveries.forEach(d => {
+      if (d.profiles && !map.has(d.user_id)) {
+        map.set(d.user_id, `${d.profiles.first_name} ${d.profiles.last_name}`);
+      }
+    });
+    return Array.from(map.entries()).map(([id, name]) => ({ id, name }));
+  }, [deliveries]);
 
   const filteredData = useMemo(() => {
     let result = [...deliveries];
+
+    // Agent data isolation
+    if (profile && profile.role === 'agent') {
+      result = result.filter(d => d.user_id === profile.id);
+    }
 
     if (searchTerm) {
       result = result.filter(d =>
@@ -38,12 +55,10 @@ const DeliveryTable: React.FC<DeliveryTableProps> = ({ deliveries, settings, onD
     if (filterTruck) result = result.filter(d => d.truck_number === filterTruck);
     if (dateStart) result = result.filter(d => d.delivery_date >= dateStart);
     if (dateEnd) result = result.filter(d => d.delivery_date <= dateEnd);
-    if (commissionOnly !== null) {
-      result = result.filter(d => commissionOnly ? d.commission_rate > 0 : d.commission_rate === 0);
-    }
+    if (selectedAgentId) result = result.filter(d => d.user_id === selectedAgentId);
 
     return getCumulativeBalances(result).sort((a, b) => new Date(b.delivery_date).getTime() - new Date(a.delivery_date).getTime());
-  }, [deliveries, searchTerm, filterSand, filterTruck, dateStart, dateEnd, commissionOnly]);
+  }, [deliveries, searchTerm, filterSand, filterTruck, dateStart, dateEnd, selectedAgentId]);
 
   const uniqueTrucks = useMemo(() => Array.from(new Set(deliveries.map(d => d.truck_number))), [deliveries]);
   const uniqueSand = useMemo(() => Array.from(new Set(deliveries.map(d => d.sand_type))), [deliveries]);
@@ -52,71 +67,104 @@ const DeliveryTable: React.FC<DeliveryTableProps> = ({ deliveries, settings, onD
     try {
       const doc = new jsPDF({ orientation: 'landscape' }) as any;
       const pageWidth = doc.internal.pageSize.width;
+      const pageHeight = doc.internal.pageSize.height;
 
-      // Top Bar Accent
-      doc.setFillColor(245, 158, 11); // Amber-500
-      doc.rect(0, 0, pageWidth, 2, 'F');
+      // --- Professional Branded Header ---
+      // Sidebar accent
+      doc.setFillColor(15, 23, 42); // slate-900
+      doc.rect(0, 0, 15, pageHeight, 'F');
 
-      // Header Background
-      doc.setFillColor(30, 41, 59); // Slate-800
-      doc.rect(0, 2, pageWidth, 43, 'F');
+      doc.setFillColor(245, 158, 11); // Amber accent
+      doc.rect(15, 0, 2, pageHeight, 'F');
 
-      // Logo & Title
-      doc.setDrawColor(245, 158, 11);
-      doc.setLineWidth(0.8);
-      doc.line(14, 15, 14, 30); // Vertical accent line
+      // Top Header
+      doc.setFillColor(15, 23, 42);
+      doc.rect(17, 0, pageWidth - 17, 45, 'F');
 
+      // Logo & Company Name
       doc.setTextColor(255, 255, 255);
       doc.setFontSize(28);
       doc.setFont("helvetica", "bold");
-      doc.text('GranitLogix', 18, 24);
+      doc.text('GRANITLOGIX', 30, 25);
 
       doc.setFontSize(9);
       doc.setFont("helvetica", "normal");
-      doc.setTextColor(148, 163, 184); // Slate-400
-      doc.text('SYSTEME DE GESTION DE LIVRAISON', 18, 30);
+      doc.setTextColor(245, 158, 11); // Amber
+      doc.text('SOLUTIONS LOGISTIQUES & GESTION DE MATÉRIAUX', 30, 32);
 
+      // Document Title & ID
       doc.setTextColor(255, 255, 255);
-      doc.setFontSize(9);
-      doc.text(`DATE DU RAPPORT : ${new Date().toLocaleDateString('fr-FR')}`, pageWidth - 14, 20, { align: 'right' });
-      doc.setFontSize(8);
-      doc.setTextColor(148, 163, 184);
-      doc.text(`HEURE : ${new Date().toLocaleTimeString('fr-FR')}`, pageWidth - 14, 25, { align: 'right' });
-
-      // Secondary Info Bar
-      doc.setFillColor(51, 65, 85); // Slate-700
-      doc.rect(0, 37, pageWidth, 8, 'F');
-
-      let filterText = 'CRITÈRES APPLIQUÉS : ';
-      if (searchTerm) filterText += `RECHERCHE: "${searchTerm.toUpperCase()}" | `;
-      if (filterSand) filterText += `TYPE: ${filterSand.toUpperCase()} | `;
-      if (filterTruck) filterText += `CAMION: ${filterTruck.toUpperCase()} | `;
-      if (dateStart || dateEnd) filterText += `PÉRIODE: ${dateStart || 'ORIGINE'} AU ${dateEnd || 'AUJOURDHUI'} | `;
-      if (filterText === 'CRITÈRES APPLIQUÉS : ') filterText += 'TOUTES LES DONNÉES DISPONIBLES';
-      else filterText = filterText.slice(0, -3);
-
-      doc.setFontSize(7);
-      doc.setTextColor(203, 213, 225);
+      doc.setFontSize(14);
       doc.setFont("helvetica", "bold");
-      doc.text(filterText, 14, 42.5);
+      doc.text('RELEVÉ D\'ACTIVITÉ DÉTAILLÉ', pageWidth - 20, 25, { align: 'right' });
 
-      const tableColumn = ["DATE", "CAMION", "CLIENT", "TYPE", "VOL(m³)", "TR.", "BRUT", "PART P.", "COMM. AG.", "NET DIR.", "PAYÉ", "RESTE"];
+      const reportRef = `REF: GL-${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, '0')}-${Math.floor(1000 + Math.random() * 9000)}`;
+      doc.setFontSize(9);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(148, 163, 184); // slate-400
+      doc.text(reportRef, pageWidth - 20, 32, { align: 'right' });
+
+      // --- Entity Information ---
+      doc.setTextColor(30, 41, 59); // slate-800
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "bold");
+      doc.text('ÉMIS PAR :', 30, 58);
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(11);
+      const actorName = profile ? `${profile.first_name} ${profile.last_name}`.toUpperCase() : "DIRECTION GÉNÉRALE";
+      doc.text(actorName, 30, 65);
+
+      doc.setFontSize(8);
+      doc.setTextColor(100, 116, 139);
+      const actorContact = profile ? `${profile.email} | ${profile.phone || 'Contact non renseigné'}` : "Service Administratif - GranitLogix S.A.R.L";
+      doc.text(actorContact, 30, 70);
+
+      // Date & Location Info
+      doc.setTextColor(30, 41, 59);
+      doc.setFontSize(9);
+      doc.setFont("helvetica", "bold");
+      doc.text('DÉTAILS DU RAPPORT :', pageWidth - 80, 58);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8);
+      doc.text(`Date d'émission : ${new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' })}`, pageWidth - 80, 65);
+      doc.text(`Heure : ${new Date().toLocaleTimeString('fr-FR')}`, pageWidth - 80, 70);
+
+      // --- Filters Banner ---
+      doc.setDrawColor(226, 232, 240);
+      doc.line(30, 78, pageWidth - 20, 78);
+
+      let filterSegments = [];
+      if (searchTerm) filterSegments.push(`Client/Camion: ${searchTerm.toUpperCase()}`);
+      if (filterSand) filterSegments.push(`Type: ${filterSand}`);
+      if (dateStart || dateEnd) {
+        const start = dateStart ? new Date(dateStart).toLocaleDateString('fr-FR') : 'Début';
+        const end = dateEnd ? new Date(dateEnd).toLocaleDateString('fr-FR') : 'Aujourd\'hui';
+        filterSegments.push(`Période: ${start} au ${end}`);
+      }
+
+      const filterText = filterSegments.length > 0
+        ? `CRITÈRES DE SÉLECTION : ${filterSegments.join(' | ')}`
+        : "RAPPORT INTÉGRAL - TOUTES OPÉRATIONS";
+
+      doc.setFontSize(8);
+      doc.setTextColor(71, 85, 105);
+      doc.setFont("helvetica", "italic");
+      doc.text(filterText, 30, 85);
+
+      // --- Main Table ---
+      const tableColumn = ["DATE", "CAMION", "CLIENT", "SABLE", "VOL(m³)", "MONTANT BRUT", "FR. ANNEXES", "COMMISSION", "NET GESTION", "RECOUVREMENT", "SOLDE"];
       const tableRows = filteredData.map(d => {
         const paid = d.payments?.reduce((sum, p) => sum + p.amount, 0) || 0;
         const remaining = Math.max(0, d.gross_amount - paid);
-
-        // Calculate truck count (redundant if already in DB, but good to ensure consistency)
-        const truckCount = Math.max(1, Math.ceil(d.volume / 30));
-
         return [
           d.delivery_date,
           d.truck_number,
-          d.client,
+          d.client.toUpperCase(),
           d.sand_type,
-          Number(d.volume).toLocaleString('fr-FR'),
-          `${truckCount} Cam.`,
+          Number(d.volume).toFixed(1),
           formatCurrency(d.gross_amount),
-          formatCurrency(d.partner_share),
+          formatCurrency(d.other_fees || 0),
           formatCurrency(d.agent_commission),
           formatCurrency(d.management_net),
           formatCurrency(paid),
@@ -127,129 +175,164 @@ const DeliveryTable: React.FC<DeliveryTableProps> = ({ deliveries, settings, onD
       autoTable(doc, {
         head: [tableColumn],
         body: tableRows,
-        startY: 45,
+        startY: 92,
         theme: 'striped',
-        headStyles: { fillColor: [30, 41, 59], textColor: 255, fontSize: 7, fontStyle: 'bold' },
-        bodyStyles: { fontSize: 6.5, cellPadding: 1.5 },
+        headStyles: {
+          fillColor: [15, 23, 42],
+          textColor: 255,
+          fontSize: 7.5,
+          fontStyle: 'bold',
+          halign: 'center',
+          cellPadding: 3
+        },
+        bodyStyles: { fontSize: 7, cellPadding: 2, textColor: [30, 41, 59] },
         columnStyles: {
-          0: { cellWidth: 15 }, // Date
-          1: { cellWidth: 15 }, // Camion
-          2: { cellWidth: 35 }, // Client
-          3: { cellWidth: 20 }, // Type
-          4: { halign: 'right', cellWidth: 12 },    // Volume
-          5: { halign: 'center', cellWidth: 15 },   // Transp/Trucks
-          6: { halign: 'right' },                   // Brut
-          7: { halign: 'right' },                   // Part Part
-          8: { halign: 'right' },                   // Comm
-          9: { halign: 'right' },                   // Net Dir
-          10: { halign: 'right' },                  // Payé
-          11: { halign: 'right' },                  // Reste
+          0: { cellWidth: 16, halign: 'center' },
+          1: { cellWidth: 18 },
+          2: { cellWidth: 32 },
+          4: { halign: 'right', cellWidth: 12 },
+          5: { halign: 'right', fontStyle: 'bold' },
+          6: { halign: 'right' },
+          7: { halign: 'right' },
+          8: { halign: 'right', fontStyle: 'bold', textColor: [30, 64, 175] }, // blue-800
+          9: { halign: 'right', textColor: [5, 150, 105] },
+          10: { halign: 'right', textColor: [185, 28, 28], fontStyle: 'bold' },
         },
         alternateRowStyles: { fillColor: [248, 250, 252] },
-        styles: { font: "helvetica", overflow: 'linebreak', cellPadding: 1 },
-        margin: { left: 8, right: 8 }
+        styles: { font: "helvetica", overflow: 'linebreak' },
+        margin: { left: 20, right: 15 }
       });
 
       const finalY = (doc as any).lastAutoTable.finalY || 150;
 
-      // Footer with page numbers
-      const pageCount = doc.internal.getNumberOfPages();
-      for (let i = 1; i <= pageCount; i++) {
-        doc.setPage(i);
-        doc.setFontSize(8);
-        doc.setTextColor(150, 150, 150);
-        doc.text(`Page ${i} sur ${pageCount}`, pageWidth / 2, doc.internal.pageSize.height - 10, { align: 'center' });
-        doc.text('GranitLogix - Système de Gestion de Livraison', 14, doc.internal.pageSize.height - 10);
-      }
-
-      // Summary Box
+      // --- Analytical Summary Card ---
       const totalBrut = filteredData.reduce((s, c) => s + c.gross_amount, 0);
+      const totalCommissionsAgent = filteredData.reduce((s, c) => s + (c.agent_commission || 0), 0);
+      const totalOtherFees = filteredData.reduce((s, c) => s + (c.other_fees || 0), 0);
       const totalManagementNet = filteredData.reduce((s, c) => s + c.management_net, 0);
       const totalPaid = filteredData.reduce((s, c) => s + (c.payments?.reduce((pSum, p) => pSum + p.amount, 0) || 0), 0);
       const totalRemaining = Math.max(0, totalBrut - totalPaid);
 
-      // Ensure summary box is on the same page if possible, or new page
-      let summaryY = finalY + 10;
-      if (summaryY + 40 > doc.internal.pageSize.height) {
+      let summaryY = finalY + 15;
+      if (summaryY + 80 > pageHeight) {
         doc.addPage();
         summaryY = 20;
       }
 
-      doc.setFillColor(248, 250, 252);
-      doc.setDrawColor(226, 232, 240);
-      doc.rect(10, summaryY, pageWidth - 20, 38, 'F');
-      doc.rect(10, summaryY, pageWidth - 20, 38, 'S');
-
-      doc.setTextColor(15, 23, 42); // Slate-900
+      // Title for Summary
+      doc.setTextColor(15, 23, 42);
       doc.setFontSize(12);
       doc.setFont("helvetica", "bold");
-      doc.text('RÉSUMÉ FINANCIER GLOBAL', 20, summaryY + 10);
+      doc.text('RÉSUMÉ FINANCIER CONSOLIDÉ', 30, summaryY);
 
-      // Column 1
-      doc.setFontSize(9);
-      doc.setFont("helvetica", "normal");
-      doc.setTextColor(100, 116, 139); // Slate-500
-      doc.text(`CHIFFRE D'AFFAIRES BRUT :`, 20, summaryY + 20);
-      doc.setFont("helvetica", "bold");
-      doc.setTextColor(15, 23, 42);
-      doc.text(`${formatCurrency(totalBrut)}`, 85, summaryY + 20);
+      // KPI Boxes
+      const boxWidth = (pageWidth - 50) / 3;
+      const boxHeight = 22;
 
-      doc.setFont("helvetica", "normal");
+      const drawStatBox = (x: number, y: number, label: string, value: string, color: [number, number, number]) => {
+        doc.setFillColor(248, 250, 252);
+        doc.setDrawColor(226, 232, 240);
+        doc.roundedRect(x, y + 5, boxWidth - 5, boxHeight, 2, 2, 'FD');
+
+        doc.setFontSize(7);
+        doc.setTextColor(100, 116, 139);
+        doc.setFont("helvetica", "bold");
+        doc.text(label, x + 5, y + 11);
+
+        doc.setFontSize(9);
+        doc.setTextColor(color[0], color[1], color[2]);
+        doc.text(value, x + 5, y + 20);
+      };
+
+      // Row 1
+      drawStatBox(30, summaryY, 'CHIFFRE D\'AFFAIRES BRUT', formatCurrency(totalBrut), [15, 23, 42]);
+      drawStatBox(30 + boxWidth, summaryY, 'TOTAL NET DIRECTION', formatCurrency(totalManagementNet), [30, 64, 175]);
+      drawStatBox(30 + boxWidth * 2, summaryY, 'COMMISSIONS AGENTS', formatCurrency(totalCommissionsAgent), [217, 119, 6]);
+
+      // Row 2
+      const row2Y = summaryY + boxHeight + 8;
+      drawStatBox(30, row2Y, 'AUTRES FRAIS DÉDUITS', formatCurrency(totalOtherFees), [185, 28, 28]);
+      drawStatBox(30 + boxWidth, row2Y, 'TOTAL ENCAISSEMENTS', formatCurrency(totalPaid), [5, 150, 105]);
+      drawStatBox(30 + boxWidth * 2, row2Y, 'SOLDE À RECOUVRER', formatCurrency(totalRemaining), [100, 116, 139]);
+
+      summaryY = row2Y + boxHeight; // Update summaryY for signature section
+
+      // --- Validation Section (Signature) ---
+      const signatureY = summaryY + 50;
+      doc.setDrawColor(203, 213, 225);
+      doc.line(30, signatureY, 100, signatureY);
+      doc.line(pageWidth - 100, signatureY, pageWidth - 20, signatureY);
+
+      doc.setFontSize(8);
       doc.setTextColor(100, 116, 139);
-      doc.text(`SURPLUS NET DIRECTION :`, 20, summaryY + 30);
-      doc.setFont("helvetica", "bold");
-      doc.setTextColor(5, 150, 105); // Emerald-600
-      doc.text(`${formatCurrency(totalManagementNet)}`, 85, summaryY + 30);
+      doc.text('Signature de l\'Agent', 30, signatureY + 5);
+      doc.text('Cachet et Signature Direction', pageWidth - 100, signatureY + 5);
 
-      // Column 2
-      doc.setFont("helvetica", "normal");
-      doc.setTextColor(100, 116, 139);
-      doc.text(`TOTAL RÉELLEMENT ENCAISSÉ :`, 155, summaryY + 20);
-      doc.setFont("helvetica", "bold");
-      doc.setTextColor(15, 23, 42);
-      doc.text(`${formatCurrency(totalPaid)}`, 225, summaryY + 20);
-
-      doc.setFont("helvetica", "normal");
-      doc.setTextColor(100, 116, 139);
-      doc.text(`RESTE À RECOUVRER :`, 155, summaryY + 30);
-      doc.setFont("helvetica", "bold");
-      doc.setTextColor(220, 38, 38); // Red-600
-      doc.text(`${formatCurrency(totalRemaining)}`, 225, summaryY + 30);
-
-      doc.save(`granitlogix_rapport_${new Date().toISOString().split('T')[0]}.pdf`);
-    } catch (error) {
-      console.error("PDF generation failed:", error);
-      alert("Une erreur est survenue lors de la génération du PDF.");
+      // --- Footer ---
+      const totalPages = doc.internal.getNumberOfPages();
+      for (let i = 1; i <= totalPages; i++) {
+        doc.setPage(i);
+        doc.setFontSize(7);
+        doc.setTextColor(148, 163, 184);
+        doc.text(`GRANITLOGIX S.A.R.L - RAPPORT GÉNÉRÉ LE ${new Date().toLocaleDateString('fr-FR')} - PAGE ${i} SUR ${totalPages}`, pageWidth / 2, pageHeight - 10, { align: 'center' });
+      }
+      doc.text(`DOCUMENT GÉNÉRÉ ÉLECTRONIQUEMENT LE ${new Date().toLocaleDateString()}`, 10, pageHeight - 10);
+      doc.save(`GRANITLOGIX_RAPPORT_${actorName.replace(' ', '_')}_${new Date().toISOString().split('T')[0]}.pdf`);
+    } catch (err) {
+      console.error('Error generating PDF:', err);
+      alert('Erreur lors de la génération du rapport PDF.');
     }
   };
 
   return (
-    <div className="space-y-4">
-      {/* Search and Filters Bar */}
-      <div className="bg-white p-3 md:p-5 rounded-2xl shadow-sm border border-slate-200 space-y-4">
-        <div className="flex flex-col md:flex-row gap-3">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
-            <input
-              type="text"
-              placeholder="Rechercher client ou camion..."
-              className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-amber-500 focus:bg-white transition-all outline-none"
-              value={searchTerm}
-              onChange={e => setSearchTerm(e.target.value)}
-            />
+    <div className="space-y-6 animate-slide-up">
+      {/* Simplified Filters Bar */}
+      <div className="bg-white border border-slate-200 p-2 rounded-xl flex flex-col md:flex-row md:items-center gap-3 shadow-sm">
+        <div className="flex items-center gap-3 px-3 py-1 flex-1">
+          <div className="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center shrink-0">
+            <Search className="text-slate-500 w-4 h-4" />
           </div>
-          <button
-            onClick={generatePDF}
-            className="bg-slate-900 text-white px-4 py-2.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-slate-800 transition-all shadow-md shadow-slate-200"
-          >
-            <Download className="w-5 h-5" />
-            <span className="md:inline hidden">Exporter PDF</span>
-          </button>
+          <input
+            type="text"
+            placeholder="Rechercher..."
+            className="flex-1 bg-transparent text-sm font-semibold text-slate-800 outline-none border-none p-0 placeholder:text-slate-400"
+            value={searchTerm}
+            onChange={e => setSearchTerm(e.target.value)}
+          />
         </div>
 
-        <div className="flex flex-wrap gap-2 items-center overflow-x-auto no-scrollbar pb-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-1">
+            <input
+              type="date"
+              className="bg-slate-50 border border-slate-200 rounded-lg py-1.5 px-2 text-[10px] font-semibold text-slate-600 outline-none cursor-pointer"
+              value={dateStart}
+              onChange={e => setDateStart(e.target.value)}
+              placeholder="Début"
+            />
+            <span className="text-slate-400 text-[10px]">à</span>
+            <input
+              type="date"
+              className="bg-slate-50 border border-slate-200 rounded-lg py-1.5 px-2 text-[10px] font-semibold text-slate-600 outline-none cursor-pointer"
+              value={dateEnd}
+              onChange={e => setDateEnd(e.target.value)}
+              placeholder="Fin"
+            />
+          </div>
+
+          {profile?.role === 'admin' && (
+            <select
+              className="bg-slate-50 border border-slate-200 rounded-lg py-1.5 px-3 text-xs font-semibold text-slate-600 outline-none cursor-pointer"
+              value={selectedAgentId}
+              onChange={e => setSelectedAgentId(e.target.value)}
+            >
+              <option value="">Tous les agents</option>
+              {agents.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+            </select>
+          )}
+
           <select
-            className="text-xs bg-slate-50 border border-slate-200 rounded-lg py-1.5 px-3 focus:ring-0 outline-none"
+            className="bg-slate-50 border border-slate-200 rounded-lg py-1.5 px-3 text-xs font-semibold text-slate-600 outline-none cursor-pointer"
             value={filterSand}
             onChange={e => setFilterSand(e.target.value)}
           >
@@ -258,7 +341,7 @@ const DeliveryTable: React.FC<DeliveryTableProps> = ({ deliveries, settings, onD
           </select>
 
           <select
-            className="text-xs bg-slate-50 border border-slate-200 rounded-lg py-1.5 px-3 focus:ring-0 outline-none"
+            className="bg-slate-50 border border-slate-200 rounded-lg py-1.5 px-3 text-xs font-semibold text-slate-600 outline-none cursor-pointer"
             value={filterTruck}
             onChange={e => setFilterTruck(e.target.value)}
           >
@@ -266,42 +349,35 @@ const DeliveryTable: React.FC<DeliveryTableProps> = ({ deliveries, settings, onD
             {uniqueTrucks.map(t => <option key={t} value={t}>{t}</option>)}
           </select>
 
-          <div className="flex gap-2">
-            <input
-              type="date"
-              className="text-xs bg-slate-50 border border-slate-200 rounded-lg py-1.5 px-2 outline-none"
-              value={dateStart}
-              onChange={e => setDateStart(e.target.value)}
-            />
-            <input
-              type="date"
-              className="text-xs bg-slate-50 border border-slate-200 rounded-lg py-1.5 px-2 outline-none"
-              value={dateEnd}
-              onChange={e => setDateEnd(e.target.value)}
-            />
-          </div>
+          <button
+            onClick={generatePDF}
+            className="bg-slate-900 text-white px-4 py-2 rounded-lg font-bold text-xs flex items-center gap-2 hover:bg-slate-800 transition-all shadow-sm active:scale-95"
+          >
+            <Download className="w-4 h-4" />
+            <span>PDF</span>
+          </button>
         </div>
       </div>
 
       {/* Desktop Table View */}
-      <div className="hidden md:block bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+      <div className="hidden md:block premium-card p-0 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm whitespace-nowrap">
-            <thead className="bg-slate-50 border-b border-slate-200 text-[10px] font-black text-slate-500 uppercase tracking-widest">
+            <thead className="bg-slate-50/50 border-b border-slate-100">
               <tr>
-                <th className="px-4 py-4">Date</th>
-                <th className="px-4 py-4">Camion</th>
-                <th className="px-4 py-4">Client</th>
-                <th className="px-4 py-4">Type</th>
-                <th className="px-4 py-4 text-right">Vol (m³)</th>
-                <th className="px-4 py-4 text-right">Prix/m³</th>
-                <th className="px-4 py-4 text-right">Brut</th>
-                <th className="px-4 py-4 text-right text-slate-400">Part Part.</th>
-                <th className="px-4 py-4 text-right text-amber-600">Comm Agent</th>
-                <th className="px-4 py-4 text-right text-emerald-600">Net Dir.</th>
-                <th className="px-4 py-4 text-right">Payé</th>
-                <th className="px-4 py-4 text-right">Reste</th>
-                <th className="px-4 py-4 text-center">Actions</th>
+                <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Date</th>
+                {profile?.role === 'admin' && <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Responsable</th>}
+                <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Camion</th>
+                <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Client</th>
+                <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Granulométrie</th>
+                <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-right">Volume</th>
+                <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-right">Mt Brut</th>
+                <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-right text-rose-500">Autres Frais</th>
+                <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-right">Réel Dir.</th>
+                <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-right text-amber-500">Commissions</th>
+                <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-right">Encaissé</th>
+                <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-right">Dette</th>
+                <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-center">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -310,43 +386,75 @@ const DeliveryTable: React.FC<DeliveryTableProps> = ({ deliveries, settings, onD
                 const remaining = Math.max(0, d.gross_amount - paid);
                 return (
                   <tr key={d.id} className="hover:bg-slate-50/80 transition-colors group">
-                    <td className="px-4 py-4 font-mono text-[11px] text-slate-500">{d.delivery_date}</td>
-                    <td className="px-4 py-4 font-bold text-amber-600">{d.truck_number}</td>
-                    <td className="px-4 py-4 font-semibold text-slate-800">{d.client}</td>
-                    <td className="px-4 py-4 text-slate-500 text-xs">{d.sand_type}</td>
-                    <td className="px-4 py-4 text-right font-mono text-xs">{d.volume}</td>
-                    <td className="px-4 py-4 text-right font-mono text-xs italic text-slate-400">{formatCurrency(d.unit_price)}</td>
-                    <td className="px-4 py-4 text-right text-xs">{formatCurrency(d.gross_amount)}</td>
-                    <td className="px-4 py-4 text-right text-slate-400 text-xs">{formatCurrency(d.partner_share)}</td>
-                    <td className="px-4 py-4 text-right text-amber-600 text-xs font-bold">{formatCurrency(d.agent_commission)}</td>
-                    <td className="px-4 py-4 text-right font-bold text-emerald-600 border-l border-slate-50">
-                      {formatCurrency(d.management_net)}
+                    <td className="px-6 py-4">
+                      <div className="font-mono text-[10px] font-bold text-slate-400">{d.delivery_date}</div>
                     </td>
-                    <td className="px-4 py-4 text-right font-bold text-blue-600">
-                      {formatCurrency(paid)}
+                    {profile?.role === 'admin' && (
+                      <td className="px-6 py-4">
+                        <div className="font-semibold text-xs text-slate-700">
+                          {d.profiles?.first_name}
+                        </div>
+                      </td>
+                    )}
+                    <td className="px-6 py-4">
+                      <span className="inline-flex px-2 py-0.5 bg-slate-100 text-slate-600 text-[10px] font-bold rounded-md">
+                        {d.truck_number}
+                      </span>
                     </td>
-                    <td className={`px-4 py-4 text-right font-black ${remaining > 0 ? 'text-rose-600' : 'text-emerald-600 bg-emerald-50/30'}`}>
-                      {formatCurrency(remaining)}
+                    <td className="px-6 py-4">
+                      <div className="font-semibold text-slate-900">{d.client}</div>
                     </td>
-                    <td className="px-4 py-4 text-center">
-                      <div className="flex items-center justify-center gap-1">
+                    <td className="px-6 py-4">
+                      <div className="text-[10px] font-semibold text-slate-500">{d.sand_type}</div>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <div className="font-mono text-xs font-semibold text-slate-600">{d.volume} <span className="text-[10px] opacity-50">m³</span></div>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <div className="font-mono text-xs font-semibold text-slate-900">{formatCurrency(d.gross_amount)}</div>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <div className="font-mono text-xs font-semibold text-rose-600">
+                        {formatCurrency(d.other_fees || 0)}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <div className="font-mono text-xs font-bold text-slate-900 px-2 py-1 rounded-lg">
+                        {formatCurrency(d.management_net)}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <div className="font-mono text-xs font-semibold text-amber-600">
+                        {formatCurrency(d.agent_commission)}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <div className="font-mono text-xs font-semibold text-emerald-600">{formatCurrency(paid)}</div>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <div className={`font-mono text-xs font-bold ${remaining > 0 ? 'text-rose-500' : 'text-slate-300'}`}>
+                        {formatCurrency(remaining)}
+                      </div>
+                    </td>
+                    <td className="px-6 py-5">
+                      <div className="flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-all duration-300">
                         <button
                           onClick={() => setSelectedDeliveryForPayments(d)}
-                          className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
-                          title="Gérer les paiements"
+                          className="p-2.5 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-xl shadow-sm transition-all active:scale-90"
+                          title="Paiements"
                         >
                           <Banknote className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => onEdit(d)}
-                          className="p-2 text-amber-600 hover:bg-amber-50 rounded-lg transition-all"
+                          className="p-2.5 bg-amber-50 text-amber-600 hover:bg-amber-100 rounded-xl shadow-sm transition-all active:scale-90"
                           title="Modifier"
                         >
                           <Edit className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => onDelete(d.id)}
-                          className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                          className="p-2.5 bg-red-50 text-red-600 hover:bg-red-100 rounded-xl shadow-sm transition-all active:scale-90"
                           title="Supprimer"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -357,23 +465,23 @@ const DeliveryTable: React.FC<DeliveryTableProps> = ({ deliveries, settings, onD
                 );
               })}
             </tbody>
-            <tfoot className="bg-slate-900 text-white font-bold">
-              <tr>
-                <td colSpan={6} className="px-4 py-4 text-right text-[10px] uppercase tracking-widest text-slate-400">Totaux Réalisés</td>
-                <td className="px-4 py-4 text-right border-l border-slate-800">{formatCurrency(filteredData.reduce((s, c) => s + c.gross_amount, 0))}</td>
-                <td className="px-4 py-4 text-right border-l border-slate-800 text-slate-400 text-xs">{formatCurrency(filteredData.reduce((s, c) => s + (c.partner_share || 0), 0))}</td>
-                <td className="px-4 py-4 text-right border-l border-slate-800 text-amber-400 text-xs">{formatCurrency(filteredData.reduce((s, c) => s + (c.agent_commission || 0), 0))}</td>
-                <td className="px-4 py-4 text-right border-l border-slate-800 text-emerald-400">{formatCurrency(filteredData.reduce((s, c) => s + (c.management_net || 0), 0))}</td>
-                <td className="px-4 py-4 text-right border-l border-slate-800 text-blue-400">
+            <tfoot className="bg-slate-900 text-white">
+              <tr className="divide-x divide-slate-800">
+                <td colSpan={profile?.role === 'admin' ? 6 : 5} className="px-6 py-6 text-right text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Totaux consolidés</td>
+                <td className="px-6 py-6 text-right font-mono font-black text-lg">{formatCurrency(filteredData.reduce((s, c) => s + c.gross_amount, 0))}</td>
+                <td className="px-6 py-6 text-right font-mono font-black text-lg text-rose-500">{formatCurrency(filteredData.reduce((s, c) => s + (c.other_fees || 0), 0))}</td>
+                <td className="px-6 py-6 text-right font-mono font-black text-lg text-emerald-400">{formatCurrency(filteredData.reduce((s, c) => s + (c.management_net || 0), 0))}</td>
+                <td className="px-6 py-6 text-right font-mono font-black text-lg text-amber-500">{formatCurrency(filteredData.reduce((s, c) => s + (c.agent_commission || 0), 0))}</td>
+                <td className="px-6 py-6 text-right font-mono font-black text-lg text-blue-400">
                   {formatCurrency(filteredData.reduce((s, c) => s + (c.payments?.reduce((pSum, p) => pSum + p.amount, 0) || 0), 0))}
                 </td>
-                <td className="px-4 py-4 text-right border-l border-slate-800 text-rose-400">
+                <td className="px-6 py-6 text-right font-mono font-black text-lg text-rose-400">
                   {formatCurrency(
                     filteredData.reduce((s, c) => s + c.gross_amount, 0) -
                     filteredData.reduce((s, c) => s + (c.payments?.reduce((pSum, p) => pSum + p.amount, 0) || 0), 0)
                   )}
                 </td>
-                <td></td>
+                <td className="bg-slate-900"></td>
               </tr>
             </tfoot>
           </table>
@@ -457,6 +565,10 @@ const DeliveryTable: React.FC<DeliveryTableProps> = ({ deliveries, settings, onD
                     <span className="font-mono text-amber-600 font-bold">-{formatCurrency(d.agent_commission)}</span>
                   </div>
                   <div>
+                    <span className="block font-bold text-slate-400 uppercase tracking-tighter text-[9px] mb-0.5">Autres Frais</span>
+                    <span className="font-mono text-rose-500 font-bold">-{formatCurrency(d.other_fees || 0)}</span>
+                  </div>
+                  <div className="text-right">
                     <span className="block font-bold text-slate-400 uppercase tracking-tighter text-[9px] mb-0.5">Part Partenaire</span>
                     <span className="font-mono text-slate-500">{formatCurrency(d.partner_share)}</span>
                   </div>

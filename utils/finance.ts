@@ -14,7 +14,7 @@ export const calculateCommission = (gross: number, rate: number): number => {
  * 5. Agent Commission = X% of Management Share
  * 6. Management Net = Management Share - Agent Commission
  */
-export const calculateGraniteFinances = (volume: number, unitPrice: number, agentRate: number = 35) => {
+export const calculateGraniteFinances = (volume: number, unitPrice: number, agentRate: number = 35, otherFees: number = 0) => {
   const truckCount = Math.max(1, Math.ceil(volume / 30));
   const managementVolume = truckCount * 3;
 
@@ -22,8 +22,11 @@ export const calculateGraniteFinances = (volume: number, unitPrice: number, agen
   const managementShare = managementVolume * unitPrice;
   const partnerShare = Math.max(0, volume - managementVolume) * unitPrice;
 
-  const agentCommission = (managementShare * agentRate) / 100;
-  const managementNet = managementShare - agentCommission;
+  // Soustraire les autres frais avant de partager entre l'agent et la direction
+  const managementRemaining = Math.max(0, managementShare - otherFees);
+
+  const agentCommission = (managementRemaining * agentRate) / 100;
+  const managementNet = managementRemaining - agentCommission;
 
   return {
     grossAmount,
@@ -31,7 +34,8 @@ export const calculateGraniteFinances = (volume: number, unitPrice: number, agen
     partnerShare,
     agentCommission,
     managementNet,
-    truckCount
+    truckCount,
+    otherFees
   };
 };
 
@@ -41,7 +45,7 @@ export const calculateNet = (gross: number, commission: number): number => {
 
 export const formatCurrency = (amount: number): string => {
   if (amount === undefined || amount === null) return "0 GNF";
-  return Math.round(amount).toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ") + " GNF";
+  return Math.round(amount).toLocaleString('fr-FR').replace(/\s/g, ' ') + " GNF";
 };
 
 export const getRemainingBalance = (delivery: Delivery): number => {

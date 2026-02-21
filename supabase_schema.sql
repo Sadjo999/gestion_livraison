@@ -11,6 +11,7 @@ create table if not exists deliveries (
   partner_share numeric not null default 0,
   agent_commission numeric not null default 0,
   management_net numeric not null default 0,
+  other_fees numeric not null default 0,
   client text not null,
   payment_date date,
   commission_rate numeric not null default 0,
@@ -48,6 +49,7 @@ create policy "Allow generic access payments" on payments for all using (true);
 create table if not exists app_settings (
   id uuid default gen_random_uuid() primary key,
   default_commission_rate numeric default 35,
+  other_fees numeric default 0,
   currency_symbol text default 'GNF',
   custom_sand_types text[] default '{}',
   granite_prices jsonb default '{}',
@@ -58,8 +60,8 @@ alter table app_settings enable row level security;
 create policy "Allow generic access settings" on app_settings for all using (true);
 
 -- Insert default settings if not exists
-insert into app_settings (default_commission_rate, currency_symbol, custom_sand_types, granite_prices, payment_methods)
-select 35, 'GNF', 
+insert into app_settings (default_commission_rate, other_fees, currency_symbol, custom_sand_types, granite_prices, payment_methods)
+select 35, 0, 'GNF', 
   ARRAY['0/10', '4/8', '0/4', '8/16', '16/25'],
   '{"0/10": 220000, "4/8": 220000, "0/4": 220000, "8/16": 230000, "16/25": 220000}'::jsonb,
   ARRAY['Espèces', 'Orange Money', 'Virement', 'Chèque']
