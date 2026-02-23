@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { Lock, AlertCircle, CheckCircle2, User as UserIcon, Mail, ShieldCheck } from 'lucide-react';
+import { Lock, AlertCircle, CheckCircle2, User as UserIcon, Mail, ShieldCheck, Eye, EyeOff } from 'lucide-react';
 import { Profile } from '../types';
 
 interface ProfileSettingsProps {
@@ -11,6 +11,8 @@ interface ProfileSettingsProps {
 const ProfileSettings: React.FC<ProfileSettingsProps> = ({ profile, onUpdate }) => {
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
+    const [showNewPassword, setShowNewPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [successMsg, setSuccessMsg] = useState<string | null>(null);
@@ -40,6 +42,8 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({ profile, onUpdate }) 
             setSuccessMsg('Mot de passe mis à jour avec succès !');
             setNewPassword('');
             setConfirmPassword('');
+            setShowNewPassword(false);
+            setShowConfirmPassword(false);
             onUpdate();
         } catch (err: any) {
             setError(err.message || 'Erreur lors de la mise à jour');
@@ -99,26 +103,44 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({ profile, onUpdate }) 
                 <form onSubmit={handleUpdatePassword} className="max-w-md space-y-6">
                     <div className="space-y-2">
                         <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Nouveau Mot de Passe</label>
-                        <input
-                            type="password"
-                            required
-                            className="w-full px-5 py-4 bg-slate-50 rounded-2xl border border-slate-200 focus:ring-4 focus:ring-amber-500/10 focus:border-amber-500 outline-none transition-all font-semibold placeholder:text-slate-300"
-                            placeholder="••••••••"
-                            value={newPassword}
-                            onChange={(e) => setNewPassword(e.target.value)}
-                        />
+                        <div className="relative group">
+                            <input
+                                type={showNewPassword ? "text" : "password"}
+                                required
+                                className="w-full px-5 py-4 bg-slate-50 rounded-2xl border border-slate-200 focus:ring-4 focus:ring-amber-500/10 focus:border-amber-500 outline-none transition-all font-semibold placeholder:text-slate-300 pr-12"
+                                placeholder="••••••••"
+                                value={newPassword}
+                                onChange={(e) => setNewPassword(e.target.value)}
+                            />
+                            <button
+                                type="button"
+                                onClick={() => setShowNewPassword(!showNewPassword)}
+                                className="absolute right-4 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 outline-none"
+                            >
+                                {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                            </button>
+                        </div>
                     </div>
 
                     <div className="space-y-2">
                         <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Confirmer le Mot de Passe</label>
-                        <input
-                            type="password"
-                            required
-                            className="w-full px-5 py-4 bg-slate-50 rounded-2xl border border-slate-200 focus:ring-4 focus:ring-amber-500/10 focus:border-amber-500 outline-none transition-all font-semibold placeholder:text-slate-300"
-                            placeholder="••••••••"
-                            value={confirmPassword}
-                            onChange={(e) => setConfirmPassword(e.target.value)}
-                        />
+                        <div className="relative group">
+                            <input
+                                type={showConfirmPassword ? "text" : "password"}
+                                required
+                                className="w-full px-5 py-4 bg-slate-50 rounded-2xl border border-slate-200 focus:ring-4 focus:ring-amber-500/10 focus:border-amber-500 outline-none transition-all font-semibold placeholder:text-slate-300 pr-12"
+                                placeholder="••••••••"
+                                value={confirmPassword}
+                                onChange={(e) => setConfirmPassword(e.target.value)}
+                            />
+                            <button
+                                type="button"
+                                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                className="absolute right-4 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 outline-none"
+                            >
+                                {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                            </button>
+                        </div>
                     </div>
 
                     {error && (

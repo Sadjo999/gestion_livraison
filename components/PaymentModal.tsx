@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { Delivery, Payment, AppSettings } from '../types';
-import { X, Plus, Trash2, Calendar, CreditCard, Banknote } from 'lucide-react';
+import { X, Plus, Trash2, Calendar, CreditCard, Banknote, CheckCircle2, AlertCircle, ChevronRight } from 'lucide-react';
 import { formatCurrency } from '../utils/finance';
 
 interface PaymentModalProps {
@@ -107,180 +107,230 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
     const progress = Math.min((totalPaid / delivery.gross_amount) * 100, 100);
 
     return (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 transition-all duration-500 animate-in fade-in">
-            <div className="bg-white/80 backdrop-blur-xl rounded-[2.5rem] shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col border border-white/40 overflow-hidden">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-hidden">
+            {/* Ultra Smooth Backdrop */}
+            <div
+                className="absolute inset-0 bg-slate-900/60 backdrop-blur-xl animate-in fade-in duration-500"
+                onClick={onClose}
+            ></div>
 
-                {/* Header */}
-                <div className="flex justify-between items-center p-8 border-b border-slate-100/50">
-                    <div>
-                        <h2 className="text-2xl font-black text-slate-900 tracking-tight font-lexend">Paiements & Règlements</h2>
-                        <p className="text-slate-500 font-medium text-sm mt-1">
-                            Livraison <span className="text-amber-600 font-bold">#{delivery.truck_number}</span> — {delivery.client}
+            <div className="relative w-full max-w-2xl max-h-[90vh] flex flex-col premium-glass rounded-[3.5rem] shadow-[0_32px_128px_-16px_rgba(0,0,0,0.3)] animate-modal-in overflow-hidden border-t border-white/60">
+
+                {/* Header Section */}
+                <div className="shrink-0 flex justify-between items-center p-8 pb-6 border-b border-white/40">
+                    <div className="space-y-1">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2.5 bg-slate-900 rounded-2xl text-white shadow-lg shadow-slate-900/20">
+                                <CreditCard className="w-5 h-5" />
+                            </div>
+                            <h2 className="text-2xl font-black text-slate-900 tracking-tight font-lexend">Flux Financiers</h2>
+                        </div>
+                        <p className="text-slate-500 font-medium text-xs ml-1">
+                            Livraison <span className="text-amber-600 font-black">#{delivery.truck_number}</span> — {delivery.client}
                         </p>
                     </div>
                     <button
                         onClick={onClose}
-                        className="p-3 bg-slate-100 hover:bg-slate-200 rounded-2xl text-slate-500 hover:text-slate-900 transition-all duration-300 hover:rotate-90"
+                        className="p-3 bg-white/50 hover:bg-white rounded-2xl text-slate-400 hover:text-slate-900 transition-all duration-300 hover:rotate-90 border border-white/50 shadow-sm"
                     >
                         <X className="w-5 h-5" />
                     </button>
                 </div>
 
-                {/* Content */}
-                <div className="flex-1 overflow-y-auto p-8 space-y-10 custom-scrollbar">
+                {/* Main Scrollable Content */}
+                <div className="flex-1 overflow-y-auto p-8 space-y-10 custom-scrollbar overscroll-contain">
 
-                    {/* Summary Card */}
+                    {/* Dynamic Stats Row */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <div className="premium-glass p-5 rounded-3xl border border-slate-200/50">
-                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 block mb-2">Total Facturé</span>
-                            <span className="text-xl font-black text-slate-900 font-lexend">{formatCurrency(delivery.gross_amount)}</span>
+                        <div className="bg-white/40 backdrop-blur-md p-6 rounded-[2rem] border border-white/60 shadow-sm group hover:bg-white transition-all duration-300">
+                            <span className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 block mb-3">Total Devis</span>
+                            <div className="text-xl font-black text-slate-900 font-lexend tracking-tighter">
+                                {formatCurrency(delivery.gross_amount)}
+                            </div>
                         </div>
-                        <div className="bg-emerald-50/50 p-5 rounded-3xl border border-emerald-100/50">
-                            <span className="text-[10px] font-black uppercase tracking-widest text-emerald-500 block mb-2">Total Encaissé</span>
-                            <span className="text-xl font-black text-emerald-700 font-lexend">{formatCurrency(totalPaid)}</span>
+
+                        <div className="bg-emerald-500/10 backdrop-blur-md p-6 rounded-[2rem] border border-emerald-500/20 shadow-sm group hover:bg-emerald-500/20 transition-all duration-300">
+                            <div className="flex justify-between items-start mb-3">
+                                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-emerald-600 block">Encaissé</span>
+                                <div className="p-1 bg-emerald-500/20 rounded-lg text-emerald-600">
+                                    <CheckCircle2 className="w-3 h-3" />
+                                </div>
+                            </div>
+                            <div className="text-xl font-black text-emerald-700 font-lexend tracking-tighter">
+                                {formatCurrency(totalPaid)}
+                            </div>
                         </div>
-                        <div className={`p-5 rounded-3xl border ${remaining > 0 ? 'bg-amber-50/50 border-amber-100/50' : 'bg-slate-50/50 border-slate-100/50'}`}>
-                            <span className={`text-[10px] font-black uppercase tracking-widest block mb-2 ${remaining > 0 ? 'text-amber-500' : 'text-slate-400'}`}>Reste à Perception</span>
-                            <span className={`text-xl font-black font-lexend ${remaining > 0 ? 'text-amber-700' : 'text-slate-400'}`}>
+
+                        <div className={`p-6 rounded-[2rem] border transition-all duration-300 ${remaining > 0 ? 'bg-amber-500/10 border-amber-500/20' : 'bg-slate-50/50 border-white/60'}`}>
+                            <div className="flex justify-between items-start mb-3">
+                                <span className={`text-[9px] font-black uppercase tracking-[0.2em] block ${remaining > 0 ? 'text-amber-600' : 'text-slate-400'}`}>
+                                    Solde Client
+                                </span>
+                                {remaining > 0 && (
+                                    <div className="p-1 bg-amber-500/20 rounded-lg text-amber-600 animate-pulse">
+                                        <AlertCircle className="w-3 h-3" />
+                                    </div>
+                                )}
+                            </div>
+                            <div className={`text-xl font-black font-lexend tracking-tighter ${remaining > 0 ? 'text-amber-700' : 'text-slate-300 line-through'}`}>
                                 {formatCurrency(Math.max(0, remaining))}
-                            </span>
+                            </div>
                         </div>
                     </div>
 
-                    <div className="space-y-3">
-                        <div className="flex justify-between items-end px-1">
-                            <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Progression du paiement</span>
-                            <span className="text-sm font-black text-slate-900 font-lexend">{Math.round(progress)}%</span>
+                    {/* Progression Visual */}
+                    <div className="space-y-4 px-2">
+                        <div className="flex justify-between items-end">
+                            <div className="space-y-1">
+                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Recouvrement actuel</span>
+                                <div className="flex items-center gap-2">
+                                    <span className="text-2xl font-black text-slate-900 font-lexend tracking-tighter">{Math.round(progress)}%</span>
+                                    {progress >= 100 && <span className="px-2 py-0.5 bg-emerald-100 text-emerald-600 rounded-md text-[8px] font-black uppercase">Solder</span>}
+                                </div>
+                            </div>
                         </div>
-                        <div className="w-full bg-slate-100 rounded-full h-3 overflow-hidden p-0.5 border border-slate-200/50">
+                        <div className="relative h-4 bg-white/40 rounded-full border border-white/60 p-1 overflow-hidden shadow-inner">
                             <div
-                                className="bg-gradient-to-r from-emerald-500 to-teal-400 h-2 rounded-full transition-all duration-1000 ease-out shadow-sm"
-                                style={{ width: `${progress}%` }}
-                            ></div>
+                                className="absolute left-1 top-1 bottom-1 bg-gradient-to-r from-emerald-500 via-teal-400 to-indigo-500 rounded-full transition-all duration-1000 ease-out shadow-lg"
+                                style={{ width: `calc(${progress}% - 8px)` }}
+                            >
+                                <div className="absolute inset-0 bg-white/20 animate-pulse"></div>
+                            </div>
                         </div>
                     </div>
 
-                    {/* Add Payment Form */}
-                    <div className="bg-slate-50/50 border border-slate-200/50 rounded-[2rem] p-6">
-                        <h3 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
-                            <div className="p-1.5 bg-blue-100 text-blue-600 rounded-lg">
-                                <Plus className="w-3.5 h-3.5" />
-                            </div>
-                            Nouveau Règlement
-                        </h3>
-                        <form onSubmit={handleAddPayment} className="grid grid-cols-1 md:grid-cols-12 gap-6 items-end">
-                            <div className="md:col-span-4">
-                                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Date d'opération</label>
-                                <div className="relative group">
-                                    <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
-                                    <input
-                                        type="date"
-                                        required
-                                        value={newPayment.payment_date}
-                                        onChange={e => setNewPayment({ ...newPayment, payment_date: e.target.value })}
-                                        className="w-full pl-11 pr-4 py-3.5 text-sm bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all font-medium"
-                                    />
-                                </div>
-                            </div>
+                    {/* New Payment Interface */}
+                    {remaining > 0 && (
+                        <div className="bg-white/60 backdrop-blur-md border border-white/60 rounded-[2.5rem] p-8 shadow-xl shadow-slate-200/20 overflow-hidden relative group">
+                            <div className="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-blue-500/5 rounded-full blur-2xl group-hover:bg-blue-500/10 transition-all duration-500"></div>
 
-                            <div className="md:col-span-4">
-                                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Montant versé</label>
-                                <div className="relative group">
-                                    <Banknote className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-emerald-500 transition-colors" />
-                                    <input
-                                        type="number"
-                                        required
-                                        placeholder="0.00"
-                                        max={remaining > 0 ? remaining : undefined}
-                                        value={newPayment.amount}
-                                        onChange={e => setNewPayment({ ...newPayment, amount: e.target.value })}
-                                        className="w-full pl-11 pr-4 py-3.5 text-sm bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 outline-none transition-all font-bold"
-                                    />
+                            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mb-8 flex items-center gap-2 relative z-10">
+                                <div className="p-2 bg-slate-900 text-white rounded-xl shadow-md">
+                                    <Plus className="w-3.5 h-3.5" />
                                 </div>
-                            </div>
+                                Effectuer un versement
+                            </h3>
 
-                            <div className="md:col-span-4">
-                                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Mode</label>
-                                <div className="relative group">
-                                    <CreditCard className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-amber-500 transition-colors" />
-                                    <select
-                                        value={newPayment.method}
-                                        onChange={e => setNewPayment({ ...newPayment, method: e.target.value })}
-                                        className="w-full pl-11 pr-10 py-3.5 text-sm bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-amber-500/10 focus:border-amber-500 outline-none appearance-none transition-all font-medium"
-                                    >
-                                        {settings.paymentMethods.map(m => (
-                                            <option key={m} value={m}>{m}</option>
-                                        ))}
-                                    </select>
-                                    <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
-                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
+                            <form onSubmit={handleAddPayment} className="grid grid-cols-1 md:grid-cols-12 gap-6 relative z-10">
+                                <div className="md:col-span-4 space-y-2">
+                                    <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Date</label>
+                                    <div className="relative">
+                                        <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                                        <input
+                                            type="date"
+                                            required
+                                            value={newPayment.payment_date}
+                                            onChange={e => setNewPayment({ ...newPayment, payment_date: e.target.value })}
+                                            className="w-full pl-11 pr-4 py-4 text-sm bg-white/80 border border-slate-200 rounded-[1.25rem] focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all font-bold text-slate-700 shadow-sm"
+                                        />
                                     </div>
                                 </div>
-                            </div>
 
-                            <div className="md:col-span-12">
-                                <button
-                                    type="submit"
-                                    disabled={!newPayment.amount || Number(newPayment.amount) <= 0}
-                                    className="w-full bg-slate-900 hover:bg-black text-white text-sm font-black py-4 px-6 rounded-2xl transition-all duration-300 disabled:opacity-30 disabled:grayscale transform active:scale-95 shadow-lg shadow-slate-200 font-lexend uppercase tracking-widest"
-                                >
-                                    Valider l'encaissement
-                                </button>
-                            </div>
-                        </form>
-                    </div>
+                                <div className="md:col-span-4 space-y-2">
+                                    <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Montant</label>
+                                    <div className="relative">
+                                        <Banknote className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                                        <input
+                                            type="number"
+                                            required
+                                            placeholder="0.00"
+                                            max={remaining}
+                                            value={newPayment.amount}
+                                            onChange={e => setNewPayment({ ...newPayment, amount: e.target.value })}
+                                            className="w-full pl-11 pr-4 py-4 text-sm bg-white/80 border border-slate-200 rounded-[1.25rem] focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 outline-none transition-all font-black text-slate-900 shadow-sm text-lg"
+                                        />
+                                    </div>
+                                </div>
 
-                    {/* Payments List */}
-                    <div className="space-y-6">
-                        <div className="flex justify-between items-center px-1">
-                            <h3 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em]">Historique des flux</h3>
-                            <span className="px-3 py-1 bg-slate-100 text-slate-600 rounded-full text-[10px] font-black uppercase tracking-tighter">
-                                {payments.length} Transaction{payments.length > 1 ? 's' : ''}
-                            </span>
+                                <div className="md:col-span-4 space-y-2">
+                                    <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Méthode</label>
+                                    <div className="relative">
+                                        <CreditCard className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                                        <select
+                                            value={newPayment.method}
+                                            onChange={e => setNewPayment({ ...newPayment, method: e.target.value })}
+                                            className="w-full pl-11 pr-10 py-4 text-sm bg-white/80 border border-slate-200 rounded-[1.25rem] focus:ring-4 focus:ring-amber-500/10 focus:border-amber-500 outline-none appearance-none transition-all font-bold text-slate-700 shadow-sm cursor-pointer"
+                                        >
+                                            {settings.paymentMethods.map(m => (
+                                                <option key={m} value={m}>{m}</option>
+                                            ))}
+                                        </select>
+                                        <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                                            <ChevronRight className="w-4 h-4 rotate-90" />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="md:col-span-12 pt-2">
+                                    <button
+                                        type="submit"
+                                        disabled={!newPayment.amount || Number(newPayment.amount) <= 0}
+                                        className="w-full bg-slate-900 hover:bg-black text-white text-xs font-black py-5 px-8 rounded-[1.5rem] transition-all duration-300 disabled:opacity-20 disabled:grayscale transform active:scale-[0.98] shadow-xl shadow-slate-900/10 font-lexend uppercase tracking-[0.2em] border-t border-white/10"
+                                    >
+                                        Valider le paiement
+                                    </button>
+                                </div>
+                            </form>
                         </div>
-                        <div className="premium-card overflow-hidden border border-slate-100">
+                    )}
+
+                    {/* Enhanced History Section */}
+                    <div className="space-y-6">
+                        <div className="flex justify-between items-center px-4">
+                            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">Historique des transactions</h3>
+                            <div className="px-4 py-1.5 bg-white/60 border border-white/60 rounded-full text-[9px] font-black text-slate-600 uppercase tracking-tighter shadow-sm backdrop-blur-sm">
+                                {payments.length} Mouvement{payments.length > 1 ? 's' : ''}
+                            </div>
+                        </div>
+
+                        <div className="bg-white/30 backdrop-blur-sm rounded-[2.5rem] border border-white/40 overflow-hidden shadow-sm">
                             <table className="w-full text-sm text-left">
-                                <thead className="bg-slate-50/50 text-[10px] font-black uppercase tracking-widest text-slate-400 border-b border-slate-100">
+                                <thead className="bg-slate-900/5 text-[9px] font-black uppercase tracking-[0.15em] text-slate-400 border-b border-white/40">
                                     <tr>
-                                        <th className="px-6 py-4">Date</th>
-                                        <th className="px-6 py-4">Méthode</th>
-                                        <th className="px-6 py-4 text-right">Montant</th>
-                                        <th className="px-6 py-4 text-center">Actions</th>
+                                        <th className="px-8 py-5">Date opération</th>
+                                        <th className="px-8 py-5">Mode</th>
+                                        <th className="px-8 py-5 text-right">Montant</th>
+                                        <th className="px-8 py-5 text-center"></th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-slate-50">
+                                <tbody className="divide-y divide-white/20">
                                     {payments.length === 0 ? (
                                         <tr>
-                                            <td colSpan={4} className="px-6 py-12 text-center text-slate-400">
-                                                <div className="flex flex-col items-center gap-3">
-                                                    <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-300">
-                                                        <CreditCard className="w-6 h-6" />
+                                            <td colSpan={4} className="px-8 py-20 text-center">
+                                                <div className="flex flex-col items-center gap-4 animate-pulse">
+                                                    <div className="w-16 h-16 bg-white/40 rounded-[2rem] flex items-center justify-center text-slate-200 border border-white/60">
+                                                        <CreditCard className="w-8 h-8" />
                                                     </div>
-                                                    <p className="font-medium italic text-sm">Aucune transaction enregistrée</p>
+                                                    <p className="font-lexend font-bold text-slate-400 tracking-tight">Aucun mouvement détecté</p>
                                                 </div>
                                             </td>
                                         </tr>
                                     ) : (
                                         payments.map(payment => (
-                                            <tr key={payment.id} className="hover:bg-slate-50/50 transition-colors group">
-                                                <td className="px-6 py-5">
-                                                    <span className="font-bold text-slate-700">
-                                                        {new Date(payment.payment_date).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' })}
-                                                    </span>
+                                            <tr key={payment.id} className="hover:bg-white/40 transition-all duration-300 group">
+                                                <td className="px-8 py-6">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="w-2 h-2 rounded-full bg-slate-300 group-hover:bg-blue-500 transition-colors"></div>
+                                                        <span className="font-bold text-slate-700 tracking-tight">
+                                                            {new Date(payment.payment_date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                                        </span>
+                                                    </div>
                                                 </td>
-                                                <td className="px-6 py-5">
-                                                    <span className="inline-flex items-center px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-[11px] font-bold text-slate-600 shadow-sm leading-none">
+                                                <td className="px-8 py-6">
+                                                    <span className="inline-flex items-center px-4 py-1.5 rounded-2xl bg-white/80 border border-slate-100 text-[10px] font-black text-slate-600 shadow-sm uppercase tracking-wider">
                                                         {payment.method}
                                                     </span>
                                                 </td>
-                                                <td className="px-6 py-5 text-right font-black text-slate-900 font-lexend text-base">
-                                                    {formatCurrency(payment.amount)}
+                                                <td className="px-8 py-6 text-right">
+                                                    <div className="font-black text-slate-900 font-lexend text-base tracking-tighter">
+                                                        {formatCurrency(payment.amount)}
+                                                    </div>
                                                 </td>
-                                                <td className="px-6 py-5 text-center">
+                                                <td className="px-8 py-6 text-center">
                                                     <button
                                                         onClick={() => handleDeletePayment(payment.id)}
-                                                        className="text-slate-300 hover:text-red-500 hover:bg-red-50 p-2.5 rounded-xl transition-all duration-300 opacity-0 group-hover:opacity-100"
-                                                        title="Supprimer"
+                                                        className="text-slate-300 hover:text-red-500 hover:bg-red-50 p-3 rounded-2xl transition-all duration-300 opacity-0 group-hover:opacity-100 shadow-sm hover:shadow-red-200/50 transform hover:scale-110"
+                                                        title="Supprimer la transaction"
                                                     >
                                                         <Trash2 className="w-4 h-4" />
                                                     </button>

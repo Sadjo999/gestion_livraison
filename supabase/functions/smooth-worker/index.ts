@@ -97,11 +97,23 @@ serve(async (req) => {
         }
 
         if (!emailSent) {
+            let friendlyError = "Le service d'email est en mode test ou non configuré.";
+            try {
+                const parsed = JSON.parse(emailError);
+                if (parsed.statusCode === 403 && parsed.name === "validation_error") {
+                    friendlyError = "Resend est en mode test. Vous ne pouvez envoyer des emails qu'à votre propre adresse (sadjo.dev@gmail.com). Pour envoyer à d'autres agents, veuillez vérifier votre domaine sur resend.com.";
+                } else if (parsed.message) {
+                    friendlyError = parsed.message;
+                }
+            } catch (e) {
+                friendlyError = emailError;
+            }
+
             return new Response(JSON.stringify({
                 success: true,
-                warning: "Compte créé, mais email non envoyé.",
+                warning: "Compte créé, mais l'email de bienvenue n'a pas pu être envoyé.",
                 manualPassword: body.password,
-                details: emailError
+                details: friendlyError
             }), {
                 status: 200,
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' }

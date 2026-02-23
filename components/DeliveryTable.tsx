@@ -40,7 +40,7 @@ const DeliveryTable: React.FC<DeliveryTableProps> = ({ deliveries, settings, onD
     let result = [...deliveries];
 
     // Agent data isolation
-    if (profile && profile.role === 'agent') {
+    if (profile && profile.role === 'user') {
       result = result.filter(d => d.user_id === profile.id);
     }
 
@@ -69,70 +69,75 @@ const DeliveryTable: React.FC<DeliveryTableProps> = ({ deliveries, settings, onD
       const pageWidth = doc.internal.pageSize.width;
       const pageHeight = doc.internal.pageSize.height;
 
-      // --- Professional Branded Header ---
-      // Sidebar accent
-      doc.setFillColor(15, 23, 42); // slate-900
-      doc.rect(0, 0, 15, pageHeight, 'F');
+      const drawPageBranding = (data?: any) => {
+        const pageCount = doc.internal.getNumberOfPages();
+        // Background elements drawing logic
+        doc.setFillColor(15, 23, 42); // slate-900
+        doc.rect(0, 0, 8, pageHeight, 'F');
 
-      doc.setFillColor(245, 158, 11); // Amber accent
-      doc.rect(15, 0, 2, pageHeight, 'F');
+        doc.setFillColor(245, 158, 11); // Amber accent
+        doc.rect(8, 0, 1.5, pageHeight, 'F');
 
-      // Top Header
-      doc.setFillColor(15, 23, 42);
-      doc.rect(17, 0, pageWidth - 17, 45, 'F');
+        // Top Header
+        doc.setFillColor(15, 23, 42);
+        doc.rect(9.5, 0, pageWidth - 9.5, 20, 'F');
 
-      // Logo & Company Name
-      doc.setTextColor(255, 255, 255);
-      doc.setFontSize(28);
-      doc.setFont("helvetica", "bold");
-      doc.text('GRANITLOGIX', 30, 25);
+        // Logo & Company Name
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(18);
+        doc.setFont("helvetica", "bold");
+        doc.text('GRANITLOGIX', 20, 12);
 
-      doc.setFontSize(9);
-      doc.setFont("helvetica", "normal");
-      doc.setTextColor(245, 158, 11); // Amber
-      doc.text('SOLUTIONS LOGISTIQUES & GESTION DE MATÉRIAUX', 30, 32);
+        doc.setFontSize(6);
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(245, 158, 11); // Amber
+        doc.text('SOLUTIONS LOGISTIQUES & GESTION DE MATÉRIAUX', 20, 16);
 
-      // Document Title & ID
-      doc.setTextColor(255, 255, 255);
-      doc.setFontSize(14);
-      doc.setFont("helvetica", "bold");
-      doc.text('RELEVÉ D\'ACTIVITÉ DÉTAILLÉ', pageWidth - 20, 25, { align: 'right' });
+        // Document Title & ID
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "bold");
+        doc.text('RELEVÉ D\'ACTIVITÉ DÉTAILLÉ', pageWidth - 15, 12, { align: 'right' });
 
-      const reportRef = `REF: GL-${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, '0')}-${Math.floor(1000 + Math.random() * 9000)}`;
-      doc.setFontSize(9);
-      doc.setFont("helvetica", "normal");
-      doc.setTextColor(148, 163, 184); // slate-400
-      doc.text(reportRef, pageWidth - 20, 32, { align: 'right' });
+        const reportRef = `REF: GL-${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, '0')}-${Math.floor(1000 + Math.random() * 9000)}`;
+        doc.setFontSize(6);
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(148, 163, 184); // slate-400
+        doc.text(reportRef, pageWidth - 15, 16, { align: 'right' });
+      };
+
+      // Draw initial page branding
+      drawPageBranding();
 
       // --- Entity Information ---
       doc.setTextColor(30, 41, 59); // slate-800
-      doc.setFontSize(10);
+      doc.setFontSize(8);
       doc.setFont("helvetica", "bold");
-      doc.text('ÉMIS PAR :', 30, 58);
+      doc.text('ÉMIS PAR :', 20, 28);
 
       doc.setFont("helvetica", "normal");
-      doc.setFontSize(11);
-      const actorName = profile ? `${profile.first_name} ${profile.last_name}`.toUpperCase() : "DIRECTION GÉNÉRALE";
-      doc.text(actorName, 30, 65);
-
       doc.setFontSize(8);
+      const actorName = profile ? `${profile.first_name} ${profile.last_name}`.toUpperCase() : "DIRECTION GÉNÉRALE";
+      doc.text(actorName, 20, 32);
+
+      doc.setFontSize(7);
       doc.setTextColor(100, 116, 139);
       const actorContact = profile ? `${profile.email} | ${profile.phone || 'Contact non renseigné'}` : "Service Administratif - GranitLogix S.A.R.L";
-      doc.text(actorContact, 30, 70);
+      doc.text(actorContact, 20, 36);
 
       // Date & Location Info
       doc.setTextColor(30, 41, 59);
-      doc.setFontSize(9);
-      doc.setFont("helvetica", "bold");
-      doc.text('DÉTAILS DU RAPPORT :', pageWidth - 80, 58);
-      doc.setFont("helvetica", "normal");
       doc.setFontSize(8);
-      doc.text(`Date d'émission : ${new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' })}`, pageWidth - 80, 65);
-      doc.text(`Heure : ${new Date().toLocaleTimeString('fr-FR')}`, pageWidth - 80, 70);
+      doc.setFont("helvetica", "bold");
+      doc.text('DÉTAILS DU RAPPORT :', pageWidth - 80, 28);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(7);
+      doc.text(`Date d'émission : ${new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' })}`, pageWidth - 80, 32);
+      doc.text(`Heure : ${new Date().toLocaleTimeString('fr-FR')}`, pageWidth - 80, 36);
 
       // --- Filters Banner ---
       doc.setDrawColor(226, 232, 240);
-      doc.line(30, 78, pageWidth - 20, 78);
+      doc.line(20, 40, pageWidth - 15, 40);
 
       let filterSegments = [];
       if (searchTerm) filterSegments.push(`Client/Camion: ${searchTerm.toUpperCase()}`);
@@ -147,16 +152,26 @@ const DeliveryTable: React.FC<DeliveryTableProps> = ({ deliveries, settings, onD
         ? `CRITÈRES DE SÉLECTION : ${filterSegments.join(' | ')}`
         : "RAPPORT INTÉGRAL - TOUTES OPÉRATIONS";
 
-      doc.setFontSize(8);
+      doc.setFontSize(6.5);
       doc.setTextColor(71, 85, 105);
       doc.setFont("helvetica", "italic");
-      doc.text(filterText, 30, 85);
+      doc.text(filterText, 20, 44);
 
       // --- Main Table ---
-      const tableColumn = ["DATE", "CAMION", "CLIENT", "SABLE", "VOL(m³)", "MONTANT BRUT", "FR. ANNEXES", "COMMISSION", "NET GESTION", "RECOUVREMENT", "SOLDE"];
+      const tableColumn = ["DATE", "CAMION", "CLIENT", "SABLE", "VOL(m³)", "MONTANT BRUT", "NET DIRECTION", "RECOUVREMENT", "SOLDE", "DÉTAILS PAIEMENTS"];
       const tableRows = filteredData.map(d => {
         const paid = d.payments?.reduce((sum, p) => sum + p.amount, 0) || 0;
         const remaining = Math.max(0, d.gross_amount - paid);
+        const groupedPayments = d.payments?.reduce((acc: any, p) => {
+          const method = p.method.replace('Orange Money', 'OM');
+          acc[method] = (acc[method] || 0) + p.amount;
+          return acc;
+        }, {}) || {};
+
+        const paymentDetails = Object.entries(groupedPayments)
+          .map(([method, amount]: [string, any]) => `${method}: ${formatCurrency(amount)}`)
+          .join(' | ') || "-";
+
         return [
           d.delivery_date,
           d.truck_number,
@@ -164,18 +179,17 @@ const DeliveryTable: React.FC<DeliveryTableProps> = ({ deliveries, settings, onD
           d.sand_type,
           Number(d.volume).toFixed(1),
           formatCurrency(d.gross_amount),
-          formatCurrency(d.other_fees || 0),
-          formatCurrency(d.agent_commission),
           formatCurrency(d.management_net),
           formatCurrency(paid),
-          formatCurrency(remaining)
+          formatCurrency(remaining),
+          paymentDetails
         ];
       });
 
       autoTable(doc, {
         head: [tableColumn],
         body: tableRows,
-        startY: 92,
+        startY: 48,
         theme: 'striped',
         headStyles: {
           fillColor: [15, 23, 42],
@@ -187,20 +201,24 @@ const DeliveryTable: React.FC<DeliveryTableProps> = ({ deliveries, settings, onD
         },
         bodyStyles: { fontSize: 7, cellPadding: 2, textColor: [30, 41, 59] },
         columnStyles: {
-          0: { cellWidth: 16, halign: 'center' },
+          0: { cellWidth: 18, halign: 'center' },
           1: { cellWidth: 18 },
           2: { cellWidth: 32 },
           4: { halign: 'right', cellWidth: 12 },
           5: { halign: 'right', fontStyle: 'bold' },
-          6: { halign: 'right' },
-          7: { halign: 'right' },
-          8: { halign: 'right', fontStyle: 'bold', textColor: [30, 64, 175] }, // blue-800
-          9: { halign: 'right', textColor: [5, 150, 105] },
-          10: { halign: 'right', textColor: [185, 28, 28], fontStyle: 'bold' },
+          6: { halign: 'right', fontStyle: 'bold', textColor: [30, 64, 175] },
+          7: { halign: 'right', textColor: [5, 150, 105] },
+          8: { halign: 'right', textColor: [185, 28, 28], fontStyle: 'bold' },
+          9: { cellWidth: 40, fontSize: 6 }
         },
         alternateRowStyles: { fillColor: [248, 250, 252] },
         styles: { font: "helvetica", overflow: 'linebreak' },
-        margin: { left: 20, right: 15 }
+        margin: { left: 15, right: 10, top: 25 },
+        didDrawPage: (data) => {
+          if (data.pageNumber > 1) {
+            drawPageBranding(data);
+          }
+        }
       });
 
       const finalY = (doc as any).lastAutoTable.finalY || 150;
@@ -216,68 +234,93 @@ const DeliveryTable: React.FC<DeliveryTableProps> = ({ deliveries, settings, onD
       let summaryY = finalY + 15;
       if (summaryY + 80 > pageHeight) {
         doc.addPage();
-        summaryY = 20;
+        drawPageBranding();
+        summaryY = 55;
       }
 
       // Title for Summary
       doc.setTextColor(15, 23, 42);
       doc.setFontSize(12);
       doc.setFont("helvetica", "bold");
-      doc.text('RÉSUMÉ FINANCIER CONSOLIDÉ', 30, summaryY);
+      doc.text('RÉSUMÉ FINANCIER CONSOLIDÉ', 20, summaryY);
 
       // KPI Boxes
-      const boxWidth = (pageWidth - 50) / 3;
-      const boxHeight = 22;
+      const boxWidth = (pageWidth - 35) / 3;
+      const boxHeight = 15;
 
       const drawStatBox = (x: number, y: number, label: string, value: string, color: [number, number, number]) => {
         doc.setFillColor(248, 250, 252);
         doc.setDrawColor(226, 232, 240);
-        doc.roundedRect(x, y + 5, boxWidth - 5, boxHeight, 2, 2, 'FD');
+        doc.roundedRect(x, y + 5, boxWidth - 5, boxHeight, 1.5, 1.5, 'FD');
 
-        doc.setFontSize(7);
+        doc.setFontSize(6);
         doc.setTextColor(100, 116, 139);
         doc.setFont("helvetica", "bold");
-        doc.text(label, x + 5, y + 11);
+        doc.text(label, x + 4, y + 10);
 
-        doc.setFontSize(9);
+        doc.setFontSize(8);
         doc.setTextColor(color[0], color[1], color[2]);
-        doc.text(value, x + 5, y + 20);
+        doc.text(value, x + 4, y + 17);
       };
 
       // Row 1
-      drawStatBox(30, summaryY, 'CHIFFRE D\'AFFAIRES BRUT', formatCurrency(totalBrut), [15, 23, 42]);
-      drawStatBox(30 + boxWidth, summaryY, 'TOTAL NET DIRECTION', formatCurrency(totalManagementNet), [30, 64, 175]);
-      drawStatBox(30 + boxWidth * 2, summaryY, 'COMMISSIONS AGENTS', formatCurrency(totalCommissionsAgent), [217, 119, 6]);
+      drawStatBox(20, summaryY, 'CHIFFRE D\'AFFAIRES BRUT', formatCurrency(totalBrut), [15, 23, 42]);
+      drawStatBox(20 + boxWidth, summaryY, 'TOTAL NET DIRECTION', formatCurrency(totalManagementNet), [30, 64, 175]);
+      drawStatBox(20 + boxWidth * 2, summaryY, 'COMMISSIONS AGENTS', formatCurrency(totalCommissionsAgent), [217, 119, 6]);
 
       // Row 2
-      const row2Y = summaryY + boxHeight + 8;
-      drawStatBox(30, row2Y, 'AUTRES FRAIS DÉDUITS', formatCurrency(totalOtherFees), [185, 28, 28]);
-      drawStatBox(30 + boxWidth, row2Y, 'TOTAL ENCAISSEMENTS', formatCurrency(totalPaid), [5, 150, 105]);
-      drawStatBox(30 + boxWidth * 2, row2Y, 'SOLDE À RECOUVRER', formatCurrency(totalRemaining), [100, 116, 139]);
+      const row2Y = summaryY + boxHeight + 2;
+      drawStatBox(20, row2Y, 'AUTRES FRAIS DÉDUITS', formatCurrency(totalOtherFees), [185, 28, 28]);
+      drawStatBox(20 + boxWidth, row2Y, 'TOTAL ENCAISSEMENTS', formatCurrency(totalPaid), [5, 150, 105]);
+      drawStatBox(20 + boxWidth * 2, row2Y, 'SOLDE À RECOUVRER', formatCurrency(totalRemaining), [100, 116, 139]);
 
-      summaryY = row2Y + boxHeight; // Update summaryY for signature section
+      summaryY = row2Y + boxHeight + 5; // Update summaryY for signature section
 
       // --- Validation Section (Signature) ---
-      const signatureY = summaryY + 50;
+      let signatureY = summaryY + 15; // Start closer to summary
+
+      // Check if signature section fits (need at least 45 units for signature + footer margin)
+      if (signatureY + 45 > pageHeight) {
+        doc.addPage();
+        drawPageBranding();
+        signatureY = 40;
+      }
+
       doc.setDrawColor(203, 213, 225);
-      doc.line(30, signatureY, 100, signatureY);
-      doc.line(pageWidth - 100, signatureY, pageWidth - 20, signatureY);
+      const lineY = signatureY + 30; // Line is 30 units below the "area start"
+      doc.line(20, lineY, 95, lineY);
+      doc.line(pageWidth - 95, lineY, pageWidth - 15, lineY);
 
       doc.setFontSize(8);
-      doc.setTextColor(100, 116, 139);
-      doc.text('Signature de l\'Agent', 30, signatureY + 5);
-      doc.text('Cachet et Signature Direction', pageWidth - 100, signatureY + 5);
+      doc.setTextColor(30, 41, 59);
+      doc.setFont("helvetica", "bold");
+      doc.text('Signature de l\'Agent', 20, signatureY + 5);
+      doc.text('Cachet et Signature Direction', pageWidth - 15, signatureY + 5, { align: 'right' });
+
+      doc.setFont("helvetica", "italic");
+      doc.setFontSize(7);
+      doc.setTextColor(148, 163, 184);
+      doc.text('(Précédé de la mention "Lu et approuvé")', 20, signatureY + 10);
 
       // --- Footer ---
       const totalPages = doc.internal.getNumberOfPages();
       for (let i = 1; i <= totalPages; i++) {
         doc.setPage(i);
-        doc.setFontSize(7);
+        doc.setFontSize(6.5);
         doc.setTextColor(148, 163, 184);
-        doc.text(`GRANITLOGIX S.A.R.L - RAPPORT GÉNÉRÉ LE ${new Date().toLocaleDateString('fr-FR')} - PAGE ${i} SUR ${totalPages}`, pageWidth / 2, pageHeight - 10, { align: 'center' });
+
+        // Left part
+        doc.text(`DOC. GÉNÉRÉ ÉLECTRONIQUEMENT LE ${new Date().toLocaleDateString('fr-FR')}`, 15, pageHeight - 10);
+
+        // Center part
+        doc.text(`GRANITLOGIX S.A.R.L - RAPPORT D'ACTIVITÉ`, pageWidth / 2, pageHeight - 10, { align: 'center' });
+
+        // Right part
+        doc.text(`PAGE ${i} / ${totalPages}`, pageWidth - 15, pageHeight - 10, { align: 'right' });
       }
-      doc.text(`DOCUMENT GÉNÉRÉ ÉLECTRONIQUEMENT LE ${new Date().toLocaleDateString()}`, 10, pageHeight - 10);
-      doc.save(`GRANITLOGIX_RAPPORT_${actorName.replace(' ', '_')}_${new Date().toISOString().split('T')[0]}.pdf`);
+
+      const fileName = `GL_RAPPORT_${actorName.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
+      doc.save(fileName);
     } catch (err) {
       console.error('Error generating PDF:', err);
       alert('Erreur lors de la génération du rapport PDF.');
@@ -373,7 +416,7 @@ const DeliveryTable: React.FC<DeliveryTableProps> = ({ deliveries, settings, onD
                 <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-right">Volume</th>
                 <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-right">Mt Brut</th>
                 <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-right text-rose-500">Autres Frais</th>
-                <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-right">Réel Dir.</th>
+                <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-right">Réel Direction</th>
                 <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-right text-amber-500">Commissions</th>
                 <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-right">Encaissé</th>
                 <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-right">Dette</th>
@@ -437,29 +480,33 @@ const DeliveryTable: React.FC<DeliveryTableProps> = ({ deliveries, settings, onD
                       </div>
                     </td>
                     <td className="px-6 py-5">
-                      <div className="flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-all duration-300">
-                        <button
-                          onClick={() => setSelectedDeliveryForPayments(d)}
-                          className="p-2.5 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-xl shadow-sm transition-all active:scale-90"
-                          title="Paiements"
-                        >
-                          <Banknote className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => onEdit(d)}
-                          className="p-2.5 bg-amber-50 text-amber-600 hover:bg-amber-100 rounded-xl shadow-sm transition-all active:scale-90"
-                          title="Modifier"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => onDelete(d.id)}
-                          className="p-2.5 bg-red-50 text-red-600 hover:bg-red-100 rounded-xl shadow-sm transition-all active:scale-90"
-                          title="Supprimer"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
+                      {d.user_id === profile?.id ? (
+                        <div className="flex items-center justify-center gap-2 transition-all duration-300">
+                          <button
+                            onClick={() => setSelectedDeliveryForPayments(d)}
+                            className="p-2.5 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-xl shadow-sm transition-all active:scale-90"
+                            title="Paiements"
+                          >
+                            <Banknote className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => onEdit(d)}
+                            className="p-2.5 bg-amber-50 text-amber-600 hover:bg-amber-100 rounded-xl shadow-sm transition-all active:scale-90"
+                            title="Modifier"
+                          >
+                            <Edit className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => onDelete(d.id)}
+                            className="p-2.5 bg-red-50 text-red-600 hover:bg-red-100 rounded-xl shadow-sm transition-all active:scale-90"
+                            title="Supprimer"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex justify-center italic text-[10px] text-slate-300">Réservé au créateur</div>
+                      )}
                     </td>
                   </tr>
                 );
@@ -508,10 +555,14 @@ const DeliveryTable: React.FC<DeliveryTableProps> = ({ deliveries, settings, onD
                   <h4 className="font-bold text-slate-900 text-base leading-tight">{d.client}</h4>
                   <p className="text-xs text-slate-500 font-medium">{d.sand_type} • {d.volume} m³ ({truckCount} Cam.)</p>
                 </div>
-                <div className="flex gap-1">
-                  <button onClick={() => onEdit(d)} className="p-2 text-slate-400 hover:bg-slate-50 rounded-xl transition-colors"><Edit2 className="w-4 h-4" /></button>
-                  <button onClick={() => onDelete(d.id)} className="p-2 text-rose-400 hover:bg-rose-50 rounded-xl transition-colors"><Trash2 className="w-4 h-4" /></button>
-                </div>
+                {d.user_id === profile?.id ? (
+                  <div className="flex gap-1">
+                    <button onClick={() => onEdit(d)} className="p-2 text-slate-400 hover:bg-slate-50 rounded-xl transition-colors"><Edit2 className="w-4 h-4" /></button>
+                    <button onClick={() => onDelete(d.id)} className="p-2 text-rose-400 hover:bg-rose-50 rounded-xl transition-colors"><Trash2 className="w-4 h-4" /></button>
+                  </div>
+                ) : (
+                  <div className="text-[10px] text-slate-300 italic">Lecture seule</div>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-3 pt-3 border-t border-slate-50">
@@ -537,12 +588,14 @@ const DeliveryTable: React.FC<DeliveryTableProps> = ({ deliveries, settings, onD
                     </div>
                   )}
                 </div>
-                <button
-                  onClick={() => setSelectedDeliveryForPayments(d)}
-                  className="text-[10px] font-black text-blue-600 bg-blue-50 px-3 py-1.5 rounded-full hover:bg-blue-100 transition-colors uppercase tracking-widest"
-                >
-                  Gérer Paiements
-                </button>
+                {d.user_id === profile?.id && (
+                  <button
+                    onClick={() => setSelectedDeliveryForPayments(d)}
+                    className="text-[10px] font-black text-blue-600 bg-blue-50 px-3 py-1.5 rounded-full hover:bg-blue-100 transition-colors uppercase tracking-widest"
+                  >
+                    Gérer Paiements
+                  </button>
+                )}
               </div>
 
               {/* Expandable info */}
@@ -576,6 +629,20 @@ const DeliveryTable: React.FC<DeliveryTableProps> = ({ deliveries, settings, onD
                     <span className="block font-bold text-slate-400 uppercase tracking-tighter text-[9px] mb-0.5">Payé</span>
                     <span className="font-mono text-blue-600 font-bold">{formatCurrency(paid)}</span>
                   </div>
+                  {d.payments && d.payments.length > 0 && (
+                    <div className="col-span-2 pt-2 border-t border-slate-200/50 mt-1">
+                      <span className="block font-bold text-slate-400 uppercase tracking-tighter text-[9px] mb-1">Détails des Recouvrements</span>
+                      <div className="space-y-1">
+                        {d.payments.map((p, idx) => (
+                          <div key={p.id} className="flex justify-between items-center text-[10px] text-slate-600 bg-white/50 p-1.5 rounded-lg border border-slate-100">
+                            <span className="font-bold">{p.payment_date}</span>
+                            <span className="font-mono text-emerald-600 font-bold">{formatCurrency(p.amount)}</span>
+                            <span className="px-1.5 py-0.5 bg-slate-100 rounded text-[8px] font-black uppercase text-slate-500">{p.method}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                   {d.notes && (
                     <div className="col-span-2 pt-2 border-t border-slate-200/50 mt-1">
                       <span className="block font-bold text-slate-400 uppercase tracking-tighter text-[9px] mb-0.5">Notes</span>

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { Profile } from '../types';
-import { UserPlus, Users, Phone, Mail, Shield, ShieldCheck, Trash2, AlertCircle, CheckCircle2, ChevronRight, Search } from 'lucide-react';
+import { UserPlus, Users, Phone, Mail, Shield, ShieldCheck, Trash2, AlertCircle, CheckCircle2, ChevronRight, Search, X } from 'lucide-react';
 
 const UserManagement: React.FC = () => {
     const [profiles, setProfiles] = useState<Profile[]>([]);
@@ -15,6 +15,8 @@ const UserManagement: React.FC = () => {
     const [lastName, setLastName] = useState('');
     const [phone, setPhone] = useState('');
     const [role, setRole] = useState<'admin' | 'user'>('user');
+    const [isDeleting, setIsDeleting] = useState(false);
+    const [deletableUser, setDeletableUser] = useState<Profile | null>(null);
 
     const [msg, setMsg] = useState<{ type: 'error' | 'success', text: string } | null>(null);
 
@@ -48,6 +50,7 @@ const UserManagement: React.FC = () => {
             setProfiles(data || []);
         } catch (err: any) {
             console.error('Error fetching profiles:', err);
+            setMsg({ type: 'error', text: 'Impossible de charger la liste des agents. Vérifiez votre connexion.' });
         } finally {
             setIsLoading(false);
         }
@@ -132,7 +135,16 @@ const UserManagement: React.FC = () => {
     };
 
     const deleteProfile = async (id: string) => {
-        if (!window.confirm('Voulez-vous vraiment supprimer cet utilisateur ? Cette action est irréversible.')) return;
+        const user = profiles.find(p => p.id === id);
+        if (user) {
+            setDeletableUser(user);
+            setIsDeleting(true);
+        }
+    };
+
+    const confirmDelete = async () => {
+        if (!deletableUser) return;
+        const id = deletableUser.id;
 
         setIsLoading(true);
         try {
@@ -144,6 +156,8 @@ const UserManagement: React.FC = () => {
 
             setProfiles(prev => prev.filter(p => p.id !== id));
             setMsg({ type: 'success', text: 'Utilisateur et ses accès supprimés avec succès.' });
+            setIsDeleting(false); // Close only on success
+            setDeletableUser(null);
         } catch (err: any) {
             setMsg({ type: 'error', text: err.message });
         } finally {
@@ -174,87 +188,208 @@ const UserManagement: React.FC = () => {
             </div>
 
             {msg && (
-                <div className={`p-4 rounded-2xl flex gap-4 border premium-glass animate-slide-up ${msg.type === 'success' ? 'bg-emerald-50/50 border-emerald-200 text-emerald-700' : 'bg-red-50/50 border-red-200 text-red-700'
+                <div className={`p-6 rounded-2xl flex flex-col md:flex-row gap-4 border premium-glass animate-slide-up shadow-lg ${msg.type === 'success'
+                    ? (msg.text.includes('⚠️') ? 'bg-amber-50/80 border-amber-200 text-amber-900' : 'bg-emerald-50/50 border-emerald-200 text-emerald-700')
+                    : 'bg-red-50/50 border-red-200 text-red-700'
                     }`}>
-                    {msg.type === 'success' ? <CheckCircle2 className="w-5 h-5 shrink-0" /> : <AlertCircle className="w-5 h-5 shrink-0" />}
-                    <p className="text-sm font-bold">{msg.text}</p>
+                    <div className="flex-shrink-0">
+                        {msg.text.includes('⚠️')
+                            ? <AlertCircle className="w-8 h-8 text-amber-500" />
+                            : msg.type === 'success'
+                                ? <CheckCircle2 className="w-8 h-8 text-emerald-500" />
+                                : <AlertCircle className="w-8 h-8 text-red-500" />
+                        }
+                    </div>
+                    <div className="flex-1 space-y-3">
+                        <p className="text-sm font-black uppercase tracking-tight leading-snug whitespace-pre-line">
+                            {msg.text.split('MOT DE PASSE GÉNÉRÉ :')[0]}
+                        </p>
+
+                        {msg.text.includes('MOT DE PASSE GÉNÉRÉ :') && (
+                            <div className="bg-white/80 p-4 rounded-xl border border-amber-200/50 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                                <div>
+                                    <span className="block text-[10px] font-black text-amber-600 uppercase tracking-widest mb-1">Mot de Passe à transmettre</span>
+                                    <code className="text-2xl font-black font-mono text-slate-900 tracking-tighter">
+                                        {msg.text.split('MOT DE PASSE GÉNÉRÉ :')[1]?.split('Veuillez')[0]?.trim()}
+                                    </code>
+                                </div>
+                                <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider italic">
+                                    Transmettez ce code via WhatsApp ou SMS
+                                </div>
+                            </div>
+                        )}
+
+                        {msg.text.includes('Veuillez transmettre') && (
+                            <p className="text-xs font-medium text-amber-700/70 border-t border-amber-200/30 pt-2">
+                                {msg.text.split('Veuillez transmettre')[1] ? 'Veuillez transmettre' + msg.text.split('Veuillez transmettre')[1] : ''}
+                            </p>
+                        )}
+                    </div>
                 </div>
             )}
 
             {isCreating && (
-                <div className="premium-card p-0 overflow-hidden animate-in fade-in slide-in-from-top-4 duration-500">
-                    <div className="p-6 border-b border-slate-100 bg-slate-50/50">
-                        <h2 className="text-xl font-black text-slate-900 font-lexend tracking-tight">Configuration Nouvel Utilisateur</h2>
-                    </div>
-                    <form onSubmit={handleCreateUser} className="p-8 grid grid-cols-1 md:grid-cols-2 gap-8">
-                        <div className="space-y-2">
-                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Prénom</label>
-                            <input
-                                type="text"
-                                required
-                                className="w-full px-5 py-4 rounded-2xl border border-slate-200 focus:ring-4 focus:ring-amber-500/10 focus:border-amber-500 outline-none transition-all font-semibold"
-                                value={firstName}
-                                onChange={(e) => setFirstName(e.target.value)}
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Nom de Famille</label>
-                            <input
-                                type="text"
-                                required
-                                className="w-full px-5 py-4 rounded-2xl border border-slate-200 focus:ring-4 focus:ring-amber-500/10 focus:border-amber-500 outline-none transition-all font-semibold"
-                                value={lastName}
-                                onChange={(e) => setLastName(e.target.value)}
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Email Professionnel</label>
-                            <input
-                                type="email"
-                                required
-                                className="w-full px-5 py-4 rounded-2xl border border-slate-200 focus:ring-4 focus:ring-amber-500/10 focus:border-amber-500 outline-none transition-all font-semibold"
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Numéro de Téléphone</label>
-                            <input
-                                type="tel"
-                                required
-                                className="w-full px-5 py-4 rounded-2xl border border-slate-200 focus:ring-4 focus:ring-amber-500/10 focus:border-amber-500 outline-none transition-all font-semibold"
-                                value={phone}
-                                onChange={(e) => setPhone(e.target.value)}
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Rôle Système</label>
-                            <select
-                                className="w-full px-5 py-4 rounded-2xl border border-slate-200 focus:ring-4 focus:ring-amber-500/10 focus:border-amber-500 outline-none transition-all font-semibold appearance-none bg-white cursor-pointer"
-                                value={role}
-                                onChange={(e) => setRole(e.target.value as any)}
-                            >
-                                <option value="user">Agent de Gestion</option>
-                                <option value="admin">Administrateur / Direction</option>
-                            </select>
-                        </div>
-                        <div className="md:col-span-2 flex justify-end gap-4 mt-4">
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                    {/* Backdrop */}
+                    <div
+                        className="absolute inset-0 bg-slate-900/60 backdrop-blur-xl animate-in fade-in duration-500"
+                        onClick={() => setIsCreating(false)}
+                    ></div>
+
+                    {/* Modal Container */}
+                    <div className="relative w-full max-w-2xl premium-glass rounded-[3rem] shadow-[0_32px_128px_-16px_rgba(0,0,0,0.3)] animate-modal-in overflow-hidden border-t border-white/60">
+                        {/* Header */}
+                        <div className="p-8 border-b border-white/40 flex justify-between items-center">
+                            <div className="flex items-center gap-4">
+                                <div className="p-3 bg-slate-900 rounded-2xl text-white shadow-lg shadow-slate-900/20">
+                                    <UserPlus className="w-5 h-5" />
+                                </div>
+                                <div>
+                                    <h2 className="text-2xl font-black text-slate-900 font-lexend tracking-tight">Nouvel Agent</h2>
+                                    <p className="text-slate-500 text-[10px] font-black uppercase tracking-[0.2em] mt-1">Configuration des accès</p>
+                                </div>
+                            </div>
                             <button
-                                type="button"
                                 onClick={() => setIsCreating(false)}
-                                className="px-8 py-4 font-black text-[10px] uppercase tracking-widest text-slate-500 hover:text-slate-900 rounded-2xl transition-all"
+                                className="p-3 bg-white/50 hover:bg-white rounded-2xl text-slate-400 hover:text-slate-900 transition-all duration-300 hover:rotate-90 border border-white/50 shadow-sm"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+
+                        {/* Form Body */}
+                        <form onSubmit={handleCreateUser}>
+                            <div className="p-10 grid grid-cols-1 md:grid-cols-2 gap-8 max-h-[60vh] overflow-y-auto custom-scrollbar">
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Prénom</label>
+                                    <div className="relative">
+                                        <ChevronRight className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300" />
+                                        <input
+                                            type="text"
+                                            required
+                                            className="w-full pl-11 pr-5 py-4 rounded-2xl border border-slate-200 focus:ring-4 focus:ring-amber-500/10 focus:border-amber-500 outline-none transition-all font-bold text-slate-700 bg-white/50"
+                                            value={firstName}
+                                            onChange={(e) => setFirstName(e.target.value)}
+                                            placeholder="Prénom"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Nom de Famille</label>
+                                    <div className="relative">
+                                        <ChevronRight className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300" />
+                                        <input
+                                            type="text"
+                                            required
+                                            className="w-full pl-11 pr-5 py-4 rounded-2xl border border-slate-200 focus:ring-4 focus:ring-amber-500/10 focus:border-amber-500 outline-none transition-all font-bold text-slate-700 bg-white/50"
+                                            value={lastName}
+                                            onChange={(e) => setLastName(e.target.value)}
+                                            placeholder="Nom"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="space-y-2 md:col-span-2">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Email Professionnel</label>
+                                    <div className="relative">
+                                        <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300" />
+                                        <input
+                                            type="email"
+                                            required
+                                            className="w-full pl-11 pr-5 py-4 rounded-2xl border border-slate-200 focus:ring-4 focus:ring-amber-500/10 focus:border-amber-500 outline-none transition-all font-bold text-slate-700 bg-white/50"
+                                            value={email}
+                                            onChange={(e) => setEmail(e.target.value)}
+                                            placeholder="agent@granitlogix.com"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Téléphone</label>
+                                    <div className="relative">
+                                        <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300" />
+                                        <input
+                                            type="tel"
+                                            required
+                                            className="w-full pl-11 pr-5 py-4 rounded-2xl border border-slate-200 focus:ring-4 focus:ring-amber-500/10 focus:border-amber-500 outline-none transition-all font-bold text-slate-700 bg-white/50"
+                                            value={phone}
+                                            onChange={(e) => setPhone(e.target.value)}
+                                            placeholder="6XX XX XX XX"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Niveau d'Accès</label>
+                                    <div className="relative">
+                                        <Shield className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300" />
+                                        <select
+                                            className="w-full pl-11 pr-10 py-4 rounded-2xl border border-slate-200 focus:ring-4 focus:ring-amber-500/10 focus:border-amber-500 outline-none transition-all font-bold text-slate-700 bg-white/50 appearance-none cursor-pointer"
+                                            value={role}
+                                            onChange={(e) => setRole(e.target.value as 'admin' | 'user')}
+                                        >
+                                            <option value="user">Agent (Standard)</option>
+                                            <option value="admin">Administrateur</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Footer Actions */}
+                            <div className="p-8 bg-slate-50/50 border-t border-white/40 flex gap-4">
+                                <button
+                                    type="button"
+                                    onClick={() => setIsCreating(false)}
+                                    className="flex-1 px-6 py-4 bg-white border border-slate-200 text-slate-500 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-100 transition-all active:scale-[0.98]"
+                                >
+                                    Annuler
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={isLoading}
+                                    className="flex-[2] px-6 py-4 bg-slate-900 text-white rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] hover:bg-black transition-all shadow-xl shadow-slate-900/10 active:scale-[0.98] border-t border-white/10 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    {isLoading ? 'Opération en cours...' : 'Générer l\'accès'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {isDeleting && deletableUser && (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+                    <div
+                        className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-300"
+                        onClick={() => { setIsDeleting(false); setDeletableUser(null); }}
+                    ></div>
+                    <div className="relative w-full max-w-md premium-glass rounded-[2rem] shadow-2xl animate-modal-in overflow-hidden border border-white/40">
+                        <div className="p-8 text-center">
+                            <div className="w-16 h-16 bg-red-50 rounded-2xl flex items-center justify-center mx-auto mb-6 text-red-500 shadow-sm border border-red-100">
+                                <Trash2 className="w-8 h-8" />
+                            </div>
+                            <h3 className="text-xl font-black text-slate-900 font-lexend tracking-tight mb-2">Supprimer l'accès ?</h3>
+                            <p className="text-slate-500 text-sm leading-relaxed px-4">
+                                Vous êtes sur le point de révoquer définitivement les accès de <span className="font-bold text-slate-900">{deletableUser.first_name} {deletableUser.last_name}</span>.
+                            </p>
+                            <div className="mt-4 p-3 bg-red-50/50 rounded-xl border border-red-100/50">
+                                <p className="text-[10px] font-black text-red-600 uppercase tracking-widest italic">Action Irréversible</p>
+                            </div>
+                        </div>
+                        <div className="p-6 bg-slate-50/50 border-t border-white/40 flex gap-3">
+                            <button
+                                onClick={() => { setIsDeleting(false); setDeletableUser(null); }}
+                                disabled={isLoading}
+                                className="flex-1 px-4 py-3 bg-white border border-slate-200 text-slate-500 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-100 transition-all active:scale-[0.98] disabled:opacity-50"
                             >
                                 Annuler
                             </button>
                             <button
-                                type="submit"
+                                onClick={confirmDelete}
                                 disabled={isLoading}
-                                className="px-10 py-4 bg-slate-900 text-white font-black text-[10px] uppercase tracking-widest rounded-2xl shadow-xl hover:bg-slate-800 transition-all disabled:opacity-50 active:scale-95"
+                                className="flex-1 px-4 py-3 bg-red-500 text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-red-600 transition-all shadow-lg shadow-red-500/20 active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2"
                             >
-                                {isLoading ? 'Traitement en cours...' : 'Générer le Compte'}
+                                {isLoading ? 'Suppression...' : 'Confirmer'}
                             </button>
                         </div>
-                    </form>
+                    </div>
                 </div>
             )}
 
@@ -342,7 +477,7 @@ const UserManagement: React.FC = () => {
                                             </div>
                                         </td>
                                         <td className="px-8 py-6 text-right">
-                                            <div className="flex items-center justify-end gap-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                                            <div className="flex items-center justify-end gap-3 transition-opacity duration-300">
                                                 <button
                                                     onClick={() => toggleStatus(p.id, p.status)}
                                                     className={`p-3 rounded-xl shadow-sm transition-all active:scale-90 ${p.status === 'active' ? 'bg-amber-50 text-amber-600 hover:bg-amber-100' : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'}`}
@@ -366,7 +501,7 @@ const UserManagement: React.FC = () => {
                     </table>
                 </div>
             </div>
-        </div>
+        </div >
     );
 };
 

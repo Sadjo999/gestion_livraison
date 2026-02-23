@@ -97,3 +97,4 @@ create trigger on_auth_user_created
 
 -- IMPORTANT: Run this SQL in your Supabase SQL Editor.
 -- After running, manually set your first user as 'admin' in the profiles table.
+

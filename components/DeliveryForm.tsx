@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Delivery, AppSettings } from '../types';
 import { calculateCommission, calculateNet, formatCurrency, calculateGraniteFinances } from '../utils/finance';
-import { Save, X, Calculator } from 'lucide-react';
+import { Save, X, Calculator, CreditCard } from 'lucide-react';
 
 interface Props {
   onSubmit: (delivery: Delivery, initialPayment?: { amount: number, method: string }) => void;
@@ -292,64 +292,95 @@ const DeliveryForm: React.FC<Props> = ({ onSubmit, initialData, onCancel, settin
 
       {/* Confirmation Modal */}
       {showConfirm && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in duration-200">
-            <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
-              <h3 className="text-xl font-bold text-slate-800 font-lexend">Vérification Finale</h3>
-              <button onClick={() => setShowConfirm(false)} className="text-slate-400 hover:text-slate-600">
-                <X className="w-6 h-6" />
-              </button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-slate-900/60 backdrop-blur-xl animate-in fade-in duration-500"
+            onClick={() => setShowConfirm(false)}
+          ></div>
+
+          <div className="relative bg-white/90 backdrop-blur-2xl rounded-[3rem] shadow-[0_32px_128px_-16px_rgba(0,0,0,0.3)] w-full max-w-lg overflow-hidden animate-modal-in border border-white/60">
+            {/* Ticket-like Header */}
+            <div className="p-10 border-b border-slate-100/50 bg-slate-50/50 text-center relative">
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-20 h-1 bg-slate-200 rounded-b-full"></div>
+              <div className="inline-flex p-4 bg-slate-900 rounded-[1.5rem] text-white shadow-xl shadow-slate-900/20 mb-4">
+                <Calculator className="w-6 h-6" />
+              </div>
+              <h3 className="text-2xl font-black text-slate-900 font-lexend tracking-tight">Vérification des données</h3>
+              <p className="text-slate-400 text-[10px] font-black uppercase tracking-[0.2em] mt-2">Récapitulatif de livraison</p>
             </div>
 
-            <div className="p-6 space-y-6 overflow-y-auto flex-1">
-              <div className="grid grid-cols-2 gap-y-3 text-sm">
-                <div className="text-slate-500">Date:</div>
-                <div className="font-bold text-right">{formData.delivery_date}</div>
+            <div className="p-10 space-y-8">
+              {/* Receipt Body */}
+              <div className="space-y-4 px-2">
+                <div className="flex justify-between items-center group">
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Client</span>
+                  <div className="h-px flex-1 mx-4 bg-slate-100 group-hover:bg-slate-200 transition-colors"></div>
+                  <span className="font-lexend font-black text-slate-900">{formData.client}</span>
+                </div>
 
-                <div className="text-slate-500">Client:</div>
-                <div className="font-bold text-right">{formData.client}</div>
+                <div className="flex justify-between items-center group">
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Matériau</span>
+                  <div className="h-px flex-1 mx-4 bg-slate-100 group-hover:bg-slate-200 transition-colors"></div>
+                  <span className="font-lexend font-black text-slate-900">{formData.volume}m³ • {formData.sand_type}</span>
+                </div>
 
-                <div className="text-slate-500">Camion:</div>
-                <div className="font-bold text-right">{formData.truck_number}</div>
+                <div className="flex justify-between items-center group">
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Immatriculation</span>
+                  <div className="h-px flex-1 mx-4 bg-slate-100 group-hover:bg-slate-200 transition-colors"></div>
+                  <span className="font-lexend font-black text-slate-900 uppercase">{formData.truck_number || "-"}</span>
+                </div>
 
-                <div className="col-span-2 border-t border-slate-100 pt-3"></div>
+                {/* Financial Divider */}
+                <div className="pt-6 border-t border-slate-100/50 border-dashed">
+                  <div className="flex justify-between items-center group mb-4">
+                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Montant Brut</span>
+                    <div className="h-px flex-1 mx-4 bg-slate-100 group-hover:bg-slate-200 transition-colors"></div>
+                    <span className="font-mono font-black text-slate-900 text-lg">{formatCurrency(finances.grossAmount)}</span>
+                  </div>
 
-                <div className="text-slate-500">Volume & Type:</div>
-                <div className="font-bold text-right">{formData.volume} m³ ({formData.sand_type})</div>
+                  <div className="flex justify-between items-center group mb-4">
+                    <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">Net GranitLogix</span>
+                    <div className="h-px flex-1 mx-4 bg-emerald-100/30 group-hover:bg-emerald-100/50 transition-colors"></div>
+                    <span className="font-mono font-black text-emerald-600 text-lg">{formatCurrency(finances.managementNet)}</span>
+                  </div>
+                </div>
 
-                <div className="text-slate-500">Montant Brut:</div>
-                <div className="font-mono font-bold text-right text-lg">{formatCurrency(finances.grossAmount)}</div>
-
-                <div className="col-span-2 border-t border-slate-100 pt-2"></div>
-
-                <div className="text-slate-500">Net Direction:</div>
-                <div className="font-mono font-bold text-right text-emerald-600">{formatCurrency(finances.managementNet)}</div>
-
-                {!initialData && (
-                  <div className="col-span-2 bg-slate-50 p-4 rounded-xl mt-2 flex justify-between items-center">
-                    <span className="font-bold text-slate-500 text-xs">Paiement Initial</span>
-                    <span className="font-mono font-bold text-slate-900 text-lg">
-                      {formatCurrency(formData.initial_payment || 0)}
-                    </span>
+                {!initialData && (formData.initial_payment || 0) > 0 && (
+                  <div className="bg-slate-900 text-white p-6 rounded-[2rem] shadow-xl shadow-slate-900/10 mt-6 relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 p-3 text-white/5 group-hover:text-white/10 transition-colors">
+                      <CreditCard className="w-12 h-12" />
+                    </div>
+                    <div className="relative z-10 flex justify-between items-center">
+                      <div>
+                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Acompte Immédiat ({formData.payment_method})</p>
+                        <p className="text-xl font-black font-mono">{formatCurrency(formData.initial_payment || 0)}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">Reste</p>
+                        <p className="text-sm font-bold text-slate-300 font-mono">
+                          {formatCurrency(finances.grossAmount - (formData.initial_payment || 0))}
+                        </p>
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>
             </div>
 
-            <div className="p-6 bg-slate-50 flex gap-3">
+            <div className="p-8 bg-slate-50/50 border-t border-slate-100/50 flex gap-4">
               <button
                 type="button"
                 onClick={() => setShowConfirm(false)}
-                className="flex-1 px-6 py-4 bg-white border border-slate-200 text-slate-600 rounded-xl font-bold hover:bg-slate-50 transition-all"
+                className="flex-1 px-6 py-5 bg-white border border-slate-200 text-slate-500 rounded-[1.5rem] font-black text-[10px] uppercase tracking-widest hover:bg-slate-50 transition-all active:scale-[0.98] shadow-sm"
               >
-                Retour
+                Rectifier
               </button>
               <button
                 type="button"
                 onClick={handleFinalSubmit}
-                className="flex-[2] px-6 py-4 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 transition-all shadow-lg"
+                className="flex-[2] px-6 py-5 bg-slate-900 text-white rounded-[1.5rem] font-black text-[10px] uppercase tracking-[0.2em] hover:bg-black transition-all shadow-xl shadow-slate-900/10 active:scale-[0.98] border-t border-white/10"
               >
-                Confirmer l'Envoi
+                Valider Livraison
               </button>
             </div>
           </div>

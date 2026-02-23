@@ -95,7 +95,7 @@ const App: React.FC = () => {
     }
   }, []);
 
-  const fetchDeliveries = useCallback(async (userId: string, role?: string) => {
+  const fetchDeliveries = useCallback(async (userId: string, role?: string, authUid?: string) => {
     try {
       let query = supabase
         .from('deliveries')
@@ -106,7 +106,7 @@ const App: React.FC = () => {
         `)
         .order('delivery_date', { ascending: false });
 
-      if (role !== 'admin') {
+      if (role !== 'admin' || (authUid && userId !== authUid)) {
         query = query.eq('user_id', userId);
       }
 
@@ -125,7 +125,7 @@ const App: React.FC = () => {
 
       const promises: Promise<any>[] = [
         fetchSettings(),
-        fetchDeliveries(selectedUserId || uid, profileData?.role)
+        fetchDeliveries(selectedUserId || uid, profileData?.role, uid)
       ];
 
       if (profileData?.role === 'admin') {
@@ -171,7 +171,7 @@ const App: React.FC = () => {
       .channel('deliveries-realtime')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'deliveries' }, () => {
         if (session?.user?.id && profile?.role) {
-          fetchDeliveries(selectedUserId || session.user.id, profile?.role);
+          fetchDeliveries(selectedUserId || session.user.id, profile?.role, session.user.id);
         }
       })
       .subscribe();
@@ -251,7 +251,7 @@ const App: React.FC = () => {
           }]);
         }
       }
-      await fetchDeliveries(selectedUserId || session.user.id, profile?.role);
+      await fetchDeliveries(selectedUserId || session.user.id, profile?.role, session.user.id);
       setActiveTab('history');
     } catch (error) {
       console.error('Error saving delivery:', error);
@@ -357,22 +357,27 @@ const App: React.FC = () => {
   );
 
   return (
-    <div className="flex flex-col md:flex-row min-h-screen bg-slate-50 font-inter overflow-hidden">
+    <div className="flex flex-col md:flex-row min-h-screen bg-slate-50 font-inter">
       {/* Mobile Header */}
       <div className="md:hidden bg-gradient-premium text-white p-4 flex items-center justify-between sticky top-0 z-50 shadow-md">
         <div className="flex items-center gap-2">
           <Truck className="w-6 h-6 text-amber-500" />
           <span className="font-black text-lg tracking-tight font-lexend">GranitLogix</span>
         </div>
-        <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="p-2 hover:bg-white/10 rounded-lg transition-colors">
-          {isMobileMenuOpen ? <X /> : <Menu />}
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={handleLogout} className="p-2 hover:bg-white/10 rounded-lg transition-colors mr-1">
+            <LogOut className="w-5 h-5" />
+          </button>
+          <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="p-2 hover:bg-white/10 rounded-lg transition-colors">
+            {isMobileMenuOpen ? <X /> : <Menu />}
+          </button>
+        </div>
       </div>
 
       {/* Sidebar Navigation */}
       <nav className={`
         ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
-        fixed md:sticky top-0 left-0 z-40 w-72 h-full md:h-screen bg-gradient-premium text-white p-6 flex flex-col gap-10 transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] shadow-2xl
+        fixed md:sticky top-0 left-0 z-40 w-72 h-full md:h-screen bg-gradient-premium text-white p-6 flex flex-col gap-10 transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] shadow-2xl overflow-y-auto
       `}>
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center shrink-0">
@@ -398,7 +403,7 @@ const App: React.FC = () => {
           <NavItem id="profile" label="Mon Profil" icon={User} />
         </div>
 
-        <div className="mt-auto pt-6 border-t border-slate-800/60 flex flex-col gap-4">
+        <div className="mt-auto pt-6 border-t border-slate-800/60 flex flex-col gap-4 shrink-0">
           <div className="premium-glass p-4 rounded-2xl mb-2">
             <p className="text-xs font-bold text-amber-500 mb-1">{profile?.first_name} {profile?.last_name}</p>
             <p className="text-[10px] text-slate-400 truncate">{profile?.email}</p>
@@ -447,9 +452,9 @@ const App: React.FC = () => {
               <DeliveryTable
                 deliveries={deliveries}
                 settings={settings}
-                onDelete={(id) => supabase.from('deliveries').delete().eq('id', id).then(() => fetchDeliveries(selectedUserId || session.user.id, profile?.role))}
+                onDelete={(id) => supabase.from('deliveries').delete().eq('id', id).then(() => fetchDeliveries(selectedUserId || session.user.id, profile?.role, session.user.id))}
                 onEdit={(d) => { setEditingDelivery(d); setActiveTab('add'); }}
-                onRefresh={() => fetchDeliveries(selectedUserId || session.user.id, profile?.role)}
+                onRefresh={() => fetchDeliveries(selectedUserId || session.user.id, profile?.role, session.user.id)}
                 profile={
                   profile?.role === 'admin' && selectedUserId
                     ? allProfiles.find(p => p.id === selectedUserId) || profile
