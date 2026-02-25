@@ -158,7 +158,7 @@ const DeliveryTable: React.FC<DeliveryTableProps> = ({ deliveries, settings, onD
       doc.text(filterText, 20, 44);
 
       // --- Main Table ---
-      const tableColumn = ["DATE", "CAMION", "CLIENT", "SABLE", "VOL(m³)", "MONTANT BRUT", "NET DIRECTION", "RECOUVREMENT", "SOLDE", "DÉTAILS PAIEMENTS"];
+      const tableColumn = ["DATE", "CAMION", "CLIENT", "G TYPE", "VOL(m³)", "MONTANT BRUT", "NET DIRECTION", "RECOUVREMENT", "SOLDE", "DÉTAILS PAIEMENTS"];
       const tableRows = filteredData.map(d => {
         const paid = d.payments?.reduce((sum, p) => sum + p.amount, 0) || 0;
         const remaining = Math.max(0, d.gross_amount - paid);
