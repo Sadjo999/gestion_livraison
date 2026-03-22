@@ -9,7 +9,7 @@ interface PaymentModalProps {
     settings: AppSettings;
     isOpen: boolean;
     onClose: () => void;
-    onUpdate: () => void; // Trigger refresh in parent
+    onUpdate: () => void; // Déclenche le rafraîchissement du composant parent
 }
 
 export const PaymentModal: React.FC<PaymentModalProps> = ({
